@@ -1,12 +1,12 @@
 // Enhanced ChatInput.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  TextField, 
-  InputAdornment, 
-  IconButton, 
-  Paper, 
-  Typography, 
-  Chip, 
+import {
+  TextField,
+  InputAdornment,
+  IconButton,
+  Paper,
+  Typography,
+  Chip,
   Box,
   CircularProgress,
   Alert,
@@ -36,9 +36,9 @@ interface ChatMessage {
   errorMessage?: string;
 }
 
-const ChatBox: React.FC<ChatInputProps> = ({ 
-  onSendMessage, 
-  rotatingGifUrl, 
+const ChatBox: React.FC<ChatInputProps> = ({
+  onSendMessage,
+  rotatingGifUrl,
   placeholder = "Chat with AI",
   showSuggestions = true,
   disabled = false,
@@ -59,7 +59,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        chatContainerRef.current && 
+        chatContainerRef.current &&
         !chatContainerRef.current.contains(event.target as Node)
       ) {
         setShowSuggestionsPanel(false);
@@ -85,7 +85,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
   useEffect(() => {
     const cleanup = setInterval(() => {
       const now = new Date();
-      setRecentMessages(prev => 
+      setRecentMessages(prev =>
         prev.filter(msg => {
           const messageAge = now.getTime() - msg.timestamp.getTime();
           return messageAge < 30000; // Keep messages for 30 seconds in state
@@ -122,25 +122,25 @@ const ChatBox: React.FC<ChatInputProps> = ({
       setRecentMessages(prev => [newMessage, ...prev.slice(0, 9)]); // Keep up to 10 in state
       setIsProcessing(true);
       setCurrentStatus('Sending command...');
-      
+
       try {
         // Update status to processing
         setCurrentStatus('Processing your request...');
-        setRecentMessages(prev => 
-          prev.map(msg => 
-            msg.id === messageId 
+        setRecentMessages(prev =>
+          prev.map(msg =>
+            msg.id === messageId
               ? { ...msg, status: 'processing' }
               : msg
           )
         );
 
         const result = await onSendMessage(inputValue.trim());
-        
+
         // Success - use the actual feedback message from the handler
         setCurrentStatus(result.message || 'Command executed successfully!');
-        setRecentMessages(prev => 
-          prev.map(msg => 
-            msg.id === messageId 
+        setRecentMessages(prev =>
+          prev.map(msg =>
+            msg.id === messageId
               ? { ...msg, status: 'success', response: result.message || 'Heatmap updated' }
               : msg
           )
@@ -154,14 +154,14 @@ const ChatBox: React.FC<ChatInputProps> = ({
         // Clear success message after 3 seconds (increased from 2)
         const timeoutId = setTimeout(() => setCurrentStatus(''), 3000);
         setStatusTimeoutId(timeoutId);
-        
+
       } catch (error) {
         // Error handling
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         setCurrentStatus('');
-        setRecentMessages(prev => 
-          prev.map(msg => 
-            msg.id === messageId 
+        setRecentMessages(prev =>
+          prev.map(msg =>
+            msg.id === messageId
               ? { ...msg, status: 'error', errorMessage }
               : msg
           )
@@ -230,10 +230,10 @@ const ChatBox: React.FC<ChatInputProps> = ({
     <Box ref={chatContainerRef} style={{ width, position: 'relative' }}>
       {/* Processing indicator and status messages - combined into one area */}
       {(isProcessing || (currentStatus && !isProcessing)) && (
-        <Box style={{ 
-          position: 'absolute', 
-          top: '-60px', 
-          width: '100%', 
+        <Box style={{
+          position: 'absolute',
+          top: '-60px',
+          width: '100%',
           zIndex: 100,
           backgroundColor: 'rgba(255,255,255,0.95)',
           borderRadius: '8px',
@@ -257,8 +257,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
                   </Typography>
                 </Box>
                 {/* Close button for success messages */}
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={closeStatusMessage}
                   style={{ padding: '2px' }}
                 >
@@ -270,73 +270,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
         </Box>
       )}
 
-      {/* Recent messages panel - positioned higher to avoid overlap */}
-      {recentMessages.length > 0 && !isProcessing && !currentStatus && (
-        <Paper 
-          elevation={1}
-          style={{
-            position: 'absolute',
-            bottom: '60px',
-            width: '100%',
-            maxHeight: '120px',
-            overflow: 'auto',
-            zIndex: 99,
-            backgroundColor: 'rgba(255,255,255,0.95)'
-          }}
-        >
-          {/* Header with clear all button */}
-          <Box style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            padding: '8px 12px',
-            borderBottom: '1px solid #ddd',
-            backgroundColor: '#f5f5f5'
-          }}>
-            <Typography variant="caption" style={{ fontSize: '11px', fontWeight: 600, color: '#666' }}>
-              Recent Commands
-            </Typography>
-            <IconButton 
-              size="small" 
-              onClick={() => setRecentMessages([])}
-              style={{ padding: '2px' }}
-            >
-              <CloseIcon style={{ fontSize: 12 }} />
-            </IconButton>
-          </Box>
 
-          {recentMessages.slice(0, 3).map((message) => ( // Only display latest 3 messages
-            <Box 
-              key={message.id}
-              style={{ 
-                padding: '8px 12px', 
-                borderBottom: '1px solid #eee',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {getStatusIcon(message.status)}
-              <Typography variant="caption" style={{ flex: 1, fontSize: '11px' }}>
-                {message.text}
-              </Typography>
-              {message.status === 'error' && (
-                <Typography variant="caption" style={{ color: '#f44336', fontSize: '10px' }}>
-                  {message.errorMessage}
-                </Typography>
-              )}
-              {/* Individual close button for each message */}
-              <IconButton 
-                size="small" 
-                onClick={() => setRecentMessages(prev => prev.filter(msg => msg.id !== message.id))}
-                style={{ padding: '2px' }}
-              >
-                <CloseIcon style={{ fontSize: 10, color: '#999' }} />
-              </IconButton>
-            </Box>
-          ))}
-        </Paper>
-      )}
 
       {/* Chat Input */}
       <TextField
@@ -377,61 +311,129 @@ const ChatBox: React.FC<ChatInputProps> = ({
         }}
       />
 
-      {/* Enhanced Suggestions Panel - only show when not processing and no status */}
-   {/* Enhanced Suggestions Panel - centered and compact */}
-   {showSuggestions && showSuggestionsPanel && inputValue === '' && !disabled && !isProcessing && !currentStatus && (
-        <Paper 
-          ref={suggestionsRef}
-          elevation={3} 
+      {/* Recent messages panel - positioned higher to avoid overlap */}
+      {recentMessages.length > 0 && !isProcessing && !currentStatus && (
+        <Paper
+          elevation={1}
           style={{
-            width: "auto",               // Auto width instead of fixed
-            minWidth: "400px",           // Minimum width
-            maxWidth: "700px",           // Maximum width
-            padding: "12px",             // Reduced from 16px
+            width: '100%',
+            maxHeight: '120px',
+            overflow: 'auto',
+            marginTop: '8px',
+            boxSizing: 'border-box',
+            backgroundColor: 'rgba(255,255,255,0.95)'
+          }}
+        >
+          {/* Header with clear all button */}
+          <Box style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 12px',
+            borderBottom: '1px solid #ddd',
+            backgroundColor: '#f5f5f5'
+          }}>
+            <Typography variant="caption" style={{ fontSize: '11px', fontWeight: 600, color: '#666' }}>
+              Recent Commands
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setRecentMessages([])}
+              style={{ padding: '2px' }}
+            >
+              <CloseIcon style={{ fontSize: 12 }} />
+            </IconButton>
+          </Box>
+
+          {recentMessages.slice(0, 3).map((message) => ( // Only display latest 3 messages
+            <Box
+              key={message.id}
+              style={{
+                padding: '8px 12px',
+                borderBottom: '1px solid #eee',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {getStatusIcon(message.status)}
+              <Typography variant="caption" style={{ flex: 1, fontSize: '11px' }}>
+                {message.text}
+              </Typography>
+              {message.status === 'error' && (
+                <Typography variant="caption" style={{ color: '#f44336', fontSize: '10px' }}>
+                  {message.errorMessage}
+                </Typography>
+              )}
+              {/* Individual close button for each message */}
+              <IconButton
+                size="small"
+                onClick={() => setRecentMessages(prev => prev.filter(msg => msg.id !== message.id))}
+                style={{ padding: '2px' }}
+              >
+                <CloseIcon style={{ fontSize: 10, color: '#999' }} />
+              </IconButton>
+            </Box>
+          ))}
+        </Paper>
+      )}
+
+      {/* Enhanced Suggestions Panel - only show when not processing and no status */}
+      {/* Enhanced Suggestions Panel - centered and compact */}
+      {showSuggestions && showSuggestionsPanel && inputValue === '' && !disabled && !isProcessing && !currentStatus && (
+        <Paper
+          ref={suggestionsRef}
+          elevation={1}
+          style={{
+            width: "100%",
+            minWidth: "0",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            padding: "10px",
+            marginTop: "8px",
             backgroundColor: "#f8f9fa",
-            position: "absolute",
-            zIndex: 1000,
-            bottom: "80px",              // More space above input
-            left: "50%",                 // Center horizontally
-            transform: "translateX(-50%)", // Perfect centering
+            position: "relative",
             border: "1px solid #e0e0e0",
-            borderRadius: "8px"
+            borderRadius: "6px"
           }}
         >
           {/* Header with close button - more compact */}
-          <Box style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <Box style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '8px'          // Reduced from 12px
           }}>
-            <Typography variant="body2" style={{ 
+            <Typography variant="body2" style={{
               fontWeight: 600,
               fontSize: '13px'           // Slightly smaller
             }}>
               Type in commands to transform heatmap:
             </Typography>
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={closeSuggestions}
               style={{ padding: '2px' }}  // Reduced padding
             >
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
-          
+
           {Object.entries(suggestions).map(([category, items]) => (
-            <Box key={category} style={{ 
-              marginBottom: '8px',        // Reduced from 12px
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',               // Reduced from 12px
-              flexWrap: 'nowrap',
-              width: '100%'
-            }}>
-              <Typography variant="caption" style={{ 
-                fontWeight: 600, 
-                color: '#666', 
+            <Box
+              key={category}
+              style={{
+                marginBottom: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: '4px',
+                width: '100%'
+              }}
+            >
+              <Typography variant="caption" style={{
+                fontWeight: 600,
+                color: '#666',
                 textTransform: 'uppercase',
                 fontSize: '11px',         // Reduced from 10px
                 minWidth: '75px',        // Reduced from 80px
@@ -440,14 +442,15 @@ const ChatBox: React.FC<ChatInputProps> = ({
               }}>
                 {category}:
               </Typography>
-              
-              <Box style={{ 
-                display: "flex", 
-                flexWrap: "nowrap",
-                gap: "4px",               // Reduced from 6px
-                flex: 1,
-                overflow: 'hidden'
-              }}>
+
+              <Box
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "4px",
+                  width: "100%"
+                }}
+              >
                 {items.map((suggestion, index) => (
                   <Chip
                     key={index}

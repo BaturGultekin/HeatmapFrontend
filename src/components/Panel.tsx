@@ -25,7 +25,7 @@ import MultipurposeSlider from './opcatiySlider';
 import ReplayIcon from '@mui/icons-material/Replay';
 import MapIcon from '@mui/icons-material/Map'; // If you want to add a toggle button
 import { ORDER_INDEX } from '../const';
-const orderArray = ['alphabetically','cluster','sum','variance']
+const orderArray = ['alphabetically', 'cluster', 'sum', 'variance']
 // interface order{
 //     row:string;
 //     col:string;
@@ -67,35 +67,37 @@ export default function PersistentDrawerLeft({
   setFilters,
   onRenderHeatmap,
   notifyClusteringStarted,
-  notifySortStarted
+  notifySortStarted,
+  chatContent
 }: {
   parentContainerRef: HTMLDivElement;
   setIsDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setOpacityValue: React.Dispatch<React.SetStateAction<number>>;
-  setPvalThreshold?:React.Dispatch<React.SetStateAction<number>>;
-  setOrder:React.Dispatch<React.SetStateAction<any>>;
-  categories:{row:{};col:{};};
-  resultCategories?:string[];
-  order:order;
+  setPvalThreshold?: React.Dispatch<React.SetStateAction<number>>;
+  setOrder: React.Dispatch<React.SetStateAction<any>>;
+  categories: { row: {}; col: {}; };
+  resultCategories?: string[];
+  order: order;
   Legend: React.ReactElement;
   panelWidth: number;
-  ID:string;
-  dataState: DataStateShape | null ;
-  setState?:React.Dispatch<React.SetStateAction<string>>;
-  setResultCategory?:React.Dispatch<React.SetStateAction<string>>;
-  setSearchTerm:React.Dispatch<React.SetStateAction<string>>;
-  downloadHeatmap:any;
-  downloadMatrix:any;
+  ID: string;
+  dataState: DataStateShape | null;
+  setState?: React.Dispatch<React.SetStateAction<string>>;
+  setResultCategory?: React.Dispatch<React.SetStateAction<string>>;
+  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+  downloadHeatmap: any;
+  downloadMatrix: any;
   setCropping: any;
-  setFilteredIdxDict:any;
-  cropBox:CropBox|null;
-  isMinimapEnabled:boolean;
-  setIsMinimapEnabled:React.Dispatch<React.SetStateAction<boolean>>;
-  filters: {row: any[], col: any[]};
-  setFilters: React.Dispatch<React.SetStateAction<{row: any[], col: any[]}>>;
+  setFilteredIdxDict: any;
+  cropBox: CropBox | null;
+  isMinimapEnabled: boolean;
+  setIsMinimapEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  filters: { row: any[], col: any[] };
+  setFilters: React.Dispatch<React.SetStateAction<{ row: any[], col: any[] }>>;
   onRenderHeatmap: (currentFilters: any) => void; // ✅ Requires filters parameter
-  notifyClusteringStarted:any;
-  notifySortStarted:any;
+  notifyClusteringStarted: any;
+  notifySortStarted: any;
+  chatContent?: React.ReactNode;
 }) {
   const [isDrawerOpen, setDrawerOpen] = useState(true);
   const theme = useTheme();
@@ -107,13 +109,13 @@ export default function PersistentDrawerLeft({
 
   const rowlabels = useMemo(
     () => {
-      if(dataState){
-      return dataState.rowLabels?.map((ele: {text: string}) => ele.text)
+      if (dataState) {
+        return dataState.rowLabels?.map((ele: { text: string }) => ele.text)
       }
-      else{
+      else {
         return null
       }
-  }, [dataState?.rowLabels]);
+    }, [dataState?.rowLabels]);
 
   const drawerWidth = panelWidth;
   const colCategorynames = Object.keys(categories.col);
@@ -137,13 +139,13 @@ export default function PersistentDrawerLeft({
     } else {
       notifySortStarted(actionType, 'rows');
     }
-    
+
     // 2. ✅ Then, set the order to begin the work (your existing logic)
     setSelectedRowIndex(index);
-    setOrder((prevOrder:any) => ({ 
-      ...prevOrder, 
-      row: actionType, 
-      sortByRowCat:"",
+    setOrder((prevOrder: any) => ({
+      ...prevOrder,
+      row: actionType,
+      sortByRowCat: "",
       sortColsByRowName: null  // Clear gene-based column sorting when changing row sort
     }));
   };
@@ -159,7 +161,7 @@ export default function PersistentDrawerLeft({
 
     // 2. ✅ Then, set the order to begin the work (your existing logic)
     setSelectedColIndex(index);
-    setOrder((prevOrder:any) => ({ ...prevOrder, col: actionType, sortByColCat:"", sortColsByRowName: null}));
+    setOrder((prevOrder: any) => ({ ...prevOrder, col: actionType, sortByColCat: "", sortColsByRowName: null }));
   };
 
   useEffect(() => {
@@ -189,18 +191,19 @@ export default function PersistentDrawerLeft({
     setIsDrawerOpen(false);
   };
   return (
-    <div style={{width: drawerWidth,height:'100%',margin:'0px'}}>
+    <div style={{ width: drawerWidth, height: '100%', margin: '0px' }}>
       <IconButton
         color="inherit"
         aria-label="open drawer"
         onClick={handleDrawerOpen}
         edge="start"
         sx={{
-        position: 'absolute',
-        top: 1,
-        left: 2,
-        zIndex: 1000, // Add this line to set the z-index of the IconButton
-        mr: 0, ...(isDrawerOpen && { display: 'none' }) }}
+          position: 'absolute',
+          top: 1,
+          left: 2,
+          zIndex: 1000, // Add this line to set the z-index of the IconButton
+          mr: 0, ...(isDrawerOpen && { display: 'none' })
+        }}
       >
         <MenuIcon />
       </IconButton>
@@ -213,7 +216,7 @@ export default function PersistentDrawerLeft({
             boxSizing: 'border-box',
             top: 1,
             left: 2,
-            position:'absolute',
+            position: 'absolute',
           },
           position: 'relative',
           height: '100%',
@@ -225,180 +228,188 @@ export default function PersistentDrawerLeft({
         open={isDrawerOpen}
       >
         <DrawerHeader>
-        <Tooltip 
-        title="Take snapshot"   
-        slotProps={{
-        popper: {
-          modifiers: [
-            {
-              name: 'offset',
-              options: {
-                offset: [0, -14],
+          <Tooltip
+            title="Take snapshot"
+            slotProps={{
+              popper: {
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: [0, -14],
+                    },
+                  },
+                ],
               },
-            },
-          ],
-        },
-      }}>
-          <IconButton onClick={downloadHeatmap}>
-            <PhotoCameraIcon /> 
-          </IconButton>
-          
-        </Tooltip>
-        <Tooltip
-        title="Download Matrix"   
-        slotProps={{
-        popper: {
-          modifiers: [
-            {
-              name: 'offset',
-              options: {
-                offset: [0, -14],
-              },
-            },
-          ],
-        },
-      }}>
-        <IconButton onClick={downloadMatrix}>
-            <DownloadIcon />
-          </IconButton>
+            }}>
+            <IconButton onClick={downloadHeatmap}>
+              <PhotoCameraIcon />
+            </IconButton>
 
-      </Tooltip>
-      {
-        cropBox ?  
-        <IconButton onClick={setFilteredIdxDict} >
-        <ReplayIcon/>
-        </IconButton> :
-        <Tooltip
-        title="Crop Mode"   
-        slotProps={{
-        popper: {
-          modifiers: [
-            {
-              name: 'offset',
-              options: {
-                offset: [0, -14],
+          </Tooltip>
+          <Tooltip
+            title="Download Matrix"
+            slotProps={{
+              popper: {
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: [0, -14],
+                    },
+                  },
+                ],
               },
-            },
-          ],
-        },
-      }}>
-        <IconButton onClick={setCropping} >
-            <CropIcon />
-          </IconButton>
+            }}>
+            <IconButton onClick={downloadMatrix}>
+              <DownloadIcon />
+            </IconButton>
 
-      </Tooltip>
-      }
-       {/* ✅ NEW: Toggle Minimap Button */}
-  <Tooltip
-    title="Toggle Minimap"
-    slotProps={{
-      popper: {
-        modifiers: [
+          </Tooltip>
           {
-            name: 'offset',
-            options: {
-              offset: [0, -14],
-            },
-          },
-        ],
-      },
-    }}
-  >
-    <IconButton onClick={() => setIsMinimapEnabled(!isMinimapEnabled)}>
-      <MapIcon color={isMinimapEnabled ? "primary" : "action"} />
-    </IconButton>
-  </Tooltip>
+            cropBox ?
+              <IconButton onClick={setFilteredIdxDict} >
+                <ReplayIcon />
+              </IconButton> :
+              <Tooltip
+                title="Crop Mode"
+                slotProps={{
+                  popper: {
+                    modifiers: [
+                      {
+                        name: 'offset',
+                        options: {
+                          offset: [0, -14],
+                        },
+                      },
+                    ],
+                  },
+                }}>
+                <IconButton onClick={setCropping} >
+                  <CropIcon />
+                </IconButton>
+
+              </Tooltip>
+          }
+          {/* ✅ NEW: Toggle Minimap Button */}
+          <Tooltip
+            title="Toggle Minimap"
+            slotProps={{
+              popper: {
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: [0, -14],
+                    },
+                  },
+                ],
+              },
+            }}
+          >
+            <IconButton onClick={() => setIsMinimapEnabled(!isMinimapEnabled)}>
+              <MapIcon color={isMinimapEnabled ? "primary" : "action"} />
+            </IconButton>
+          </Tooltip>
 
           <IconButton onClick={handleDrawerClose}>
             {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
           </IconButton>
         </DrawerHeader>
         <Divider />
-        <div style={{ marginLeft: '10px', marginRight: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-          <h3 style={{ margin: '0', padding:'0',fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <h3 style={{ margin: '0', padding: '0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}>
             Row Order
           </h3>
-          <ListComponent selectedIndex={ORDER_INDEX[order["row"]]} handleItemClick={handleRowItemClick}/>
+          <ListComponent selectedIndex={ORDER_INDEX[order["row"]]} handleItemClick={handleRowItemClick} />
         </div>
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'10px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-          <h3 style={{ margin: '0',padding:'0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}>
-            Col Order 
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <h3 style={{ margin: '0', padding: '0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}>
+            Col Order
           </h3>
-          <ListComponent selectedIndex={ORDER_INDEX[order["col"]]} handleItemClick={handleColItemClick}/>
+          <ListComponent selectedIndex={ORDER_INDEX[order["col"]]} handleItemClick={handleColItemClick} />
         </div>
-        {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm}/>}
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-        <h3 style={{ margin: '0', padding:'0',marginTop: '0', marginBottom: '2px',fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' 
-}}>
+        {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm} />}
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <h3 style={{
+            margin: '0', padding: '0', marginTop: '0', marginBottom: '2px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
+          }}>
             Opacity Slider
           </h3>
-        <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0.5} maxVal={3} step={0.25} initialVal={1}/>
-        {/* <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true}/> */}
+          <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0.5} maxVal={3} step={0.25} initialVal={1} />
+          {/* <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true}/> */}
         </div>
 
-        {['olinkHeatmap','cytofHeatmap','serologyHeatmap','rnaseqHeatmap'].includes(ID) && setPvalThreshold &&
-            <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-            <h3 style={{ margin: '0', padding:'0',marginTop: '0', marginBottom: '2px',fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' 
-    }}>
-                P-value Slider
-              </h3>
-            <MultipurposeSlider direction='horizontal' setOpacityValue={setPvalThreshold} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true}/>
-            </div>
+        {['olinkHeatmap', 'cytofHeatmap', 'serologyHeatmap', 'rnaseqHeatmap'].includes(ID) && setPvalThreshold &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <h3 style={{
+              margin: '0', padding: '0', marginTop: '0', marginBottom: '2px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
+            }}>
+              P-value Slider
+            </h3>
+            <MultipurposeSlider direction='horizontal' setOpacityValue={setPvalThreshold} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true} />
+          </div>
         }
 
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'10px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-        <h3 style={{ margin: '0', padding:'0',marginTop: '0', marginBottom: '2px',fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' 
-}}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <h3 style={{
+            margin: '0', padding: '0', marginTop: '0', marginBottom: '2px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
+          }}>
             Matrix Values
           </h3>
         </div>
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'0px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-        {Legend}
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '0px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          {Legend}
         </div>
 
-         {/* 🆕 ADD FILTERS SECTION HERE */}
-         <FiltersSection 
+        {/* 🆕 ADD FILTERS SECTION HERE */}
+        <FiltersSection
           filters={filters}
           setFilters={setFilters}
           onRenderHeatmap={onRenderHeatmap}
         />
 
-        {colCategorynames.length>0 &&
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'20px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-        <MultiSelect elements={colCategorynames} order={order} setOrder={setOrder} axis='col'/>
-        </div>}
+        {colCategorynames.length > 0 &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <MultiSelect elements={colCategorynames} order={order} setOrder={setOrder} axis='col' />
+          </div>}
 
-        {rowCategorynames.length>0 &&
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'30px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-        <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrder} axis='row'/>
-        </div>}
-        
+        {rowCategorynames.length > 0 &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrder} axis='row' />
+          </div>}
+
+        {chatContent && (
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <h3 style={{ margin: '0', marginBottom: '6px', padding: '0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}> AI Assistant </h3> {chatContent}
+          </div>)}
+
         {/* previous line */}
         {/* {ID==='olinkPatientHeatmap' && setState &&
         <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'30px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
             <SimpleSelection elements={['Zscore','Raw']} setState={setState} initialValue='Zscore' labelName='Value Scale'/>
         </div>} */}
 
-        {['olinkPatientHeatmap','cytofPatientHeatmap','serologyPatientHeatmap','rnaseqPatientHeatmap'].includes(ID) && setState &&
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'30px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-            <SimpleSelection elements={['Zscore','Raw']} setState={setState} initialValue='Zscore' labelName='Value Scale'/>
-        </div>}
+        {['olinkPatientHeatmap', 'cytofPatientHeatmap', 'serologyPatientHeatmap', 'rnaseqPatientHeatmap'].includes(ID) && setState &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <SimpleSelection elements={['Zscore', 'Raw']} setState={setState} initialValue='Zscore' labelName='Value Scale' />
+          </div>}
 
 
-        {['olinkHeatmap','cytofHeatmap','serologyHeatmap','rnaseqHeatmap'].includes(ID) && setResultCategory && resultCategories &&
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'50px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-            <SimpleSelection elements={resultCategories} setState={setResultCategory} initialValue={resultCategories[0]} labelName='Result Type'/>
-        </div>}
-        {['olinkHeatmap','cytofHeatmap','serologyHeatmap','rnaseqHeatmap'].includes(ID) && setState &&
-        <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'30px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
-            <SimpleSelection elements={['logFC','nLogP']} setState={setState} initialValue='logFC' labelName='Value Type'/>
-        </div>
+        {['olinkHeatmap', 'cytofHeatmap', 'serologyHeatmap', 'rnaseqHeatmap'].includes(ID) && setResultCategory && resultCategories &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <SimpleSelection elements={resultCategories} setState={setResultCategory} initialValue={resultCategories[0]} labelName='Result Type' />
+          </div>}
+        {['olinkHeatmap', 'cytofHeatmap', 'serologyHeatmap', 'rnaseqHeatmap'].includes(ID) && setState &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <SimpleSelection elements={['logFC', 'nLogP']} setState={setState} initialValue='logFC' labelName='Value Type' />
+          </div>
         }
-         {/* <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'30px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
+        {/* <div style={{ marginLeft: '10px', marginRight: '10px',marginTop:'30px',display: 'flex', flexDirection: 'column', justifyContent: 'flex-start'}}>
             <SimpleSelection elements={['logFC','nLogP']} setState={setState} initialValue='logFC' labelName='Distance Type'/>
         </div> */}
       </Drawer>
-      </div>
+    </div>
     // </div> 
   );
 }
