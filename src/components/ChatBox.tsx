@@ -19,13 +19,16 @@ import ErrorIcon from '@mui/icons-material/Error';
 import CloseIcon from '@mui/icons-material/Close';
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => Promise<{ success: boolean; message: string }>;
+  onSendMessage: (message: string) => Promise<{
+    success: boolean;
+    message: string;
+  }>;
+  onCommandRun?: () => void;
   rotatingGifUrl?: string;
   placeholder?: string;
   showSuggestions?: boolean;
   disabled?: boolean;
   width?: string;
-  onCommandRun?: () => void;
 }
 
 interface ChatMessage {
@@ -43,8 +46,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
   placeholder = "Chat with AI",
   showSuggestions = true,
   disabled = false,
-  width = "100%",
-  onCommandRun
+  width = "100%"
 }) => {
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuggestionsPanel, setShowSuggestionsPanel] = useState<boolean>(false);
@@ -110,16 +112,12 @@ const ChatBox: React.FC<ChatInputProps> = ({
     visualization: ["Make it dark", "Make it light", "Set opacity to 0.8"]
   };
 
-  const handleSendClick = async (messageOverride?: string): Promise<void> => {
-    const command = (messageOverride ?? inputValue).trim();
-
-    if (command && !disabled && !isProcessing) {
-      // Collapse AI panel back to default sidebar
-      onCommandRun?.();
+  const handleSendClick = async (): Promise<void> => {
+    if (inputValue.trim() && !disabled && !isProcessing) {
       const messageId = Date.now().toString();
       const newMessage: ChatMessage = {
         id: messageId,
-        text: command,
+        text: inputValue.trim(),
         timestamp: new Date(),
         status: 'sending'
       };
@@ -140,7 +138,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
           )
         );
 
-        const result = await onSendMessage(command);
+        const result = await onSendMessage(inputValue.trim());
 
         // Success - use the actual feedback message from the handler
         setCurrentStatus(result.message || 'Command executed successfully!');
@@ -190,8 +188,6 @@ const ChatBox: React.FC<ChatInputProps> = ({
   const handleSuggestionClick = (suggestion: string): void => {
     setInputValue(suggestion);
     setShowSuggestionsPanel(false);
-
-    void handleSendClick(suggestion);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -236,55 +232,59 @@ const ChatBox: React.FC<ChatInputProps> = ({
 
   return (
     <Box ref={chatContainerRef} style={{ width, position: 'relative' }}>
-      {/* Chat Input */}
-      <TextField
-        id="outlined-basic"
-        label={placeholder}
-        variant="outlined"
-        multiline={true}
-        rows={1}
-        value={inputValue}
-        onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
-        onFocus={handleInputFocus}
-        fullWidth={true}
-        disabled={disabled || isProcessing}
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                style={{ cursor: isProcessing ? "not-allowed" : "pointer" }}
-                aria-label="send message"
-                onClick={() => handleSendClick()}
-                disabled={!inputValue.trim() || disabled || isProcessing}
-              >
-                {isProcessing ? (
-                  <CircularProgress size={20} />
-                ) : (
-                  <SendIcon />
-                )}
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
-        style={{
-          backgroundImage: rotatingGifUrl ? `url(${rotatingGifUrl})` : 'none',
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      />
+      {/* Processing indicator and status messages - combined into one area */}
+      {(isProcessing || (currentStatus && !isProcessing)) && (
+        <Box style={{
+          position: 'absolute',
+          top: '-60px',
+          width: '100%',
+          zIndex: 100,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          {isProcessing ? (
+            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CircularProgress size={16} />
+              <Typography variant="caption" style={{ color: '#666', fontSize: '12px' }}>
+                {currentStatus}
+              </Typography>
+            </Box>
+          ) : (
+            <Fade in={true}>
+              <Box style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircleIcon style={{ color: '#4caf50', fontSize: 16 }} />
+                  <Typography variant="caption" style={{ color: '#4caf50', fontSize: '12px' }}>
+                    {currentStatus}
+                  </Typography>
+                </Box>
+                {/* Close button for success messages */}
+                <IconButton
+                  size="small"
+                  onClick={closeStatusMessage}
+                  style={{ padding: '2px' }}
+                >
+                  <CloseIcon style={{ fontSize: 14, color: '#666' }} />
+                </IconButton>
+              </Box>
+            </Fade>
+          )}
+        </Box>
+      )}
 
       {/* Recent messages panel - positioned higher to avoid overlap */}
       {recentMessages.length > 0 && !isProcessing && !currentStatus && (
         <Paper
           elevation={1}
           style={{
+            position: 'absolute',
+            bottom: '60px',
             width: '100%',
             maxHeight: '120px',
             overflow: 'auto',
-            marginBottom: '8px',
-            boxSizing: 'border-box',
+            zIndex: 99,
             backgroundColor: 'rgba(255,255,255,0.95)'
           }}
         >
@@ -342,23 +342,64 @@ const ChatBox: React.FC<ChatInputProps> = ({
         </Paper>
       )}
 
+      {/* Chat Input */}
+      <TextField
+        id="outlined-basic"
+        label={placeholder}
+        variant="outlined"
+        multiline={true}
+        rows={1}
+        value={inputValue}
+        onChange={handleInputChange}
+        onKeyPress={handleKeyPress}
+        onFocus={handleInputFocus}
+        fullWidth={true}
+        disabled={disabled || isProcessing}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton
+                style={{ cursor: isProcessing ? "not-allowed" : "pointer" }}
+                aria-label="send message"
+                onClick={handleSendClick}
+                disabled={!inputValue.trim() || disabled || isProcessing}
+              >
+                {isProcessing ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <SendIcon />
+                )}
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+        style={{
+          backgroundImage: rotatingGifUrl ? `url(${rotatingGifUrl})` : 'none',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+
       {/* Enhanced Suggestions Panel - only show when not processing and no status */}
       {/* Enhanced Suggestions Panel - centered and compact */}
       {showSuggestions && showSuggestionsPanel && inputValue === '' && !disabled && !isProcessing && !currentStatus && (
         <Paper
           ref={suggestionsRef}
-          elevation={1}
+          elevation={3}
           style={{
-            width: "100%",
-            minWidth: "0",
-            maxWidth: "100%",
-            boxSizing: "border-box",
-            padding: "10px",
-            marginTop: "8px",
+            width: "auto",               // Auto width instead of fixed
+            minWidth: "400px",           // Minimum width
+            maxWidth: "700px",           // Maximum width
+            padding: "12px",             // Reduced from 16px
             backgroundColor: "#f8f9fa",
-            position: "relative",
+            position: "absolute",
+            zIndex: 1000,
+            bottom: "80px",              // More space above input
+            left: "50%",                 // Center horizontally
+            transform: "translateX(-50%)", // Perfect centering
             border: "1px solid #e0e0e0",
-            borderRadius: "6px"
+            borderRadius: "8px"
           }}
         >
           {/* Header with close button - more compact */}
@@ -370,9 +411,9 @@ const ChatBox: React.FC<ChatInputProps> = ({
           }}>
             <Typography variant="body2" style={{
               fontWeight: 600,
-              fontSize: '12px'           // Slightly smaller
+              fontSize: '13px'           // Slightly smaller
             }}>
-              Type a command or choose
+              Type in commands to transform heatmap:
             </Typography>
             <IconButton
               size="small"
@@ -384,38 +425,33 @@ const ChatBox: React.FC<ChatInputProps> = ({
           </Box>
 
           {Object.entries(suggestions).map(([category, items]) => (
-            <Box
-              key={category}
-              style={{
-                marginBottom: '10px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: '4px',
-                width: '100%'
-              }}
-            >
-              <Typography
-                variant="caption"
-                style={{
-                  fontWeight: 600,
-                  color: '#666',
-                  textTransform: 'uppercase',
-                  fontSize: '10px',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {category}
+            <Box key={category} style={{
+              marginBottom: '8px',        // Reduced from 12px
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',               // Reduced from 12px
+              flexWrap: 'nowrap',
+              width: '100%'
+            }}>
+              <Typography variant="caption" style={{
+                fontWeight: 600,
+                color: '#666',
+                textTransform: 'uppercase',
+                fontSize: '11px',         // Reduced from 10px
+                minWidth: '75px',        // Reduced from 80px
+                whiteSpace: 'nowrap',
+                textAlign: 'left'
+              }}>
+                {category}:
               </Typography>
 
-              <Box
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "4px",
-                  width: "100%"
-                }}
-              >
+              <Box style={{
+                display: "flex",
+                flexWrap: "nowrap",
+                gap: "4px",               // Reduced from 6px
+                flex: 1,
+                overflow: 'hidden'
+              }}>
                 {items.map((suggestion, index) => (
                   <Chip
                     key={index}
@@ -437,45 +473,6 @@ const ChatBox: React.FC<ChatInputProps> = ({
             </Box>
           ))}
         </Paper>
-      )}
-
-      {/* Processing indicator and status messages - combined into one area */}
-      {(isProcessing || (currentStatus && !isProcessing)) && (
-        <Box style={{
-          width: '100%',
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          {isProcessing ? (
-            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CircularProgress size={16} />
-              <Typography variant="caption" style={{ color: '#666', fontSize: '12px' }}>
-                {currentStatus}
-              </Typography>
-            </Box>
-          ) : (
-            <Fade in={true}>
-              <Box style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
-                <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CheckCircleIcon style={{ color: '#4caf50', fontSize: 16 }} />
-                  <Typography variant="caption" style={{ color: '#4caf50', fontSize: '12px' }}>
-                    {currentStatus}
-                  </Typography>
-                </Box>
-                {/* Close button for success messages */}
-                <IconButton
-                  size="small"
-                  onClick={closeStatusMessage}
-                  style={{ padding: '2px' }}
-                >
-                  <CloseIcon style={{ fontSize: 14, color: '#666' }} />
-                </IconButton>
-              </Box>
-            </Fade>
-          )}
-        </Box>
       )}
     </Box>
   );

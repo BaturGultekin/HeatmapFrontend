@@ -429,7 +429,7 @@ export default function PersistentDrawerLeft({
                     marginBottom: '2px'
                   }}
                 >
-                  Row Cluster Detail
+                  Row Cluster Depth
                 </div>
 
                 <CustomSlider
@@ -447,7 +447,7 @@ export default function PersistentDrawerLeft({
                     marginBottom: '2px'
                   }}
                 >
-                  Column Cluster Detail
+                  Column Cluster Depth
                 </div>
 
                 <CustomSlider

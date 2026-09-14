@@ -20,7 +20,21 @@ const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
   },
 
   '&.Mui-selected:hover': {
-    backgroundColor: theme.palette.primary.dark,
+    backgroundColor: theme.palette.primary.main,
+  },
+
+  // Click/pressed state
+  '&:active': {
+    backgroundColor: '#90CAF9',
+  },
+
+  '&.Mui-selected:active': {
+    backgroundColor: '#64B5F6',
+  },
+
+  // MUI ripple color
+  '& .MuiTouchRipple-child': {
+    backgroundColor: '#64B5F6',
   },
 }));
 
@@ -74,7 +88,7 @@ const ListComponent: React.FC<ListComponentProps> = ({
                     color:
                       selectedIndex === idx
                         ? '#FFFFFF'
-                        : '#333333',
+                        : '#1976d2',
                   },
                 }}
               />
