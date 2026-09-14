@@ -14,27 +14,27 @@ import ExampleHeatmapPage from './components/pages/ExampleHeatmapPage'; // ✅ F
 import { initializeGA, trackPageView } from './utils/analytics';
 
 // Component to track page views
-// function PageTracker() {
-//   const location = useLocation();
+function PageTracker() {
+  const location = useLocation();
 
-//   useEffect(() => {
-//     trackPageView(location.pathname + location.search);
-//   }, [location]);
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location]);
 
-//   return null;
-// }
+  return null;
+}
 
 function App() {
-  // useEffect(() => {
-  //   // Initialize Google Analytics when the app starts
-  //   initializeGA();
-  // }, []);
+  useEffect(() => {
+    // Initialize Google Analytics when the app starts
+    initializeGA();
+  }, []);
 
   return (
     // <Router  basename="/clusterchirp-test">
     <Router>
 
-      {/* <PageTracker /> */}
+      <PageTracker />
       <Routes>
         <Route path='/' element={<Layout/>}>
           <Route index element={<Home/>}/>
