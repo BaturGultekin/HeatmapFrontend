@@ -8,7 +8,7 @@ import { generateTooltipContent } from './GenerateTooltip';
 import ClusterInfoBox from './components/HoverTable';
 import Legend2 from './components/Legend2';
 import PersistentDrawerLeft from './components/Panel';
-import CustomSlider from './components/Slider';
+//import CustomSlider from './components/Slider';
 import { DEFAULT_LABEL_OFFSET, MAX_CATEGORIES, OPACITY, HEATMAP_PARENT_HEIGHT_RATIO, HEATMAP_PARENT_WIDTH_RATIO, HEATMAP_WIDTH, HEATMAP_HEIGHT, IDS, BASE_ZOOM, INITIAL_GAP, LAYER_GAP } from './const';
 import { layerFilter } from './layerFilter';
 import { getLayers } from './layers/getLayers';
@@ -2143,13 +2143,19 @@ export const DeckGLHeatmap = ({
           onRenderHeatmap={handleRenderHeatmap}
           notifyClusteringStarted={notifyClusteringStarted}
           notifySortStarted={notifySortStarted}
-          chatContent={<ChatBox
-            onSendMessage={(message: string) => handleOllamaSendClick(message)}
-            rotatingGifUrl={rotatingGifUrl}
-            placeholder="Chat with AI"
-            showSuggestions={true}
-            disabled={false}
-            width="100%" />}
+          setRowClusterValue={setRowClusterValue}
+          setColClusterValue={setColClusterValue}
+          chatContent={(onCommandRun) => (
+            <ChatBox
+              onSendMessage={(message: string) => handleOllamaSendClick(message)}
+              onCommandRun={onCommandRun}
+              rotatingGifUrl={rotatingGifUrl}
+              placeholder="Chat with AI Assistant"
+              showSuggestions={true}
+              disabled={false}
+              width="100%"
+            />
+          )}
         />
         <div style={{ flex: "1 1 0" }}>  {/* This will be a container for the heatmap and whitespace */}
           <div id="heatmapDiv" style={{
@@ -2326,7 +2332,7 @@ export const DeckGLHeatmap = ({
   />
 )} */}
           </div>
-          {order.col === "cluster" && (
+          {/* {order.col === "cluster" && (
             <CustomSlider
               direction="vertical"
               setClusterValue={setColClusterValue}
@@ -2340,7 +2346,7 @@ export const DeckGLHeatmap = ({
               setClusterValue={setRowClusterValue}
               width={rowLabelsWidth + panelWidth}
             />
-          )}
+          )} */}
         </div>
       </div>
 

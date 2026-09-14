@@ -20,6 +20,7 @@ import { order } from '../types';
 import MultiSelect from './CustomMultiSelect';
 import ListComponent from './ListComponent';
 import SearchBox from './SearchBox';
+import CustomSlider from './Slider';
 import SimpleSelection from './SimpleSelection';
 import MultipurposeSlider from './opcatiySlider';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -68,6 +69,8 @@ export default function PersistentDrawerLeft({
   onRenderHeatmap,
   notifyClusteringStarted,
   notifySortStarted,
+  setRowClusterValue,
+  setColClusterValue,
   chatContent
 }: {
   parentContainerRef: HTMLDivElement;
@@ -97,9 +100,13 @@ export default function PersistentDrawerLeft({
   onRenderHeatmap: (currentFilters: any) => void; // ✅ Requires filters parameter
   notifyClusteringStarted: any;
   notifySortStarted: any;
-  chatContent?: React.ReactNode;
+  setRowClusterValue: React.Dispatch<React.SetStateAction<number>>;
+  setColClusterValue: React.Dispatch<React.SetStateAction<number>>;
+  chatContent?: (onCommandRun: () => void) => React.ReactNode;
 }) {
   const [isDrawerOpen, setDrawerOpen] = useState(true);
+  const [isAIExpanded, setIsAIExpanded] = useState(false);
+  const aiPanelRef = React.useRef<HTMLDivElement>(null);
   const theme = useTheme();
   // const [selectedRowIndex, setSelectedRowIndex] = useState(0)
   const [selectedRowIndex, setSelectedRowIndex] = useState(ORDER_INDEX[order["row"]]);
@@ -172,6 +179,26 @@ export default function PersistentDrawerLeft({
       drawer.style.height = `${parentContainerHeight}px`;
     }
   }, [parentContainerRef]);
+
+  // AI Assistant: collapse when clicking outside
+  useEffect(() => {
+    if (!isAIExpanded) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        aiPanelRef.current &&
+        !aiPanelRef.current.contains(event.target as Node)
+      ) {
+        setIsAIExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAIExpanded]);
 
   const DrawerHeader = styled('div')(({ }) => ({
     display: 'flex',
@@ -317,18 +344,120 @@ export default function PersistentDrawerLeft({
           </IconButton>
         </DrawerHeader>
         <Divider />
-        <div style={{ marginLeft: '10px', marginRight: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-          <h3 style={{ margin: '0', padding: '0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}>
-            Row Order
-          </h3>
-          <ListComponent selectedIndex={ORDER_INDEX[order["row"]]} handleItemClick={handleRowItemClick} />
+        <div
+          style={{
+            marginLeft: '10px',
+            marginRight: '10px',
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '16px',
+            alignItems: 'flex-start'
+          }}
+        >
+          <div
+            style={{
+              width: '50%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-start'
+            }}
+          >
+            <h3
+              style={{
+                margin: '0',
+                padding: '0',
+                fontSize: '14px',
+                fontWeight: 'normal',
+                fontFamily: 'Arial, sans-serif'
+              }}
+            >
+              Row Order
+            </h3>
+
+            <ListComponent
+              selectedIndex={ORDER_INDEX[order["row"]]}
+              handleItemClick={handleRowItemClick}
+            />
+          </div>
+
+          <div
+            style={{
+              width: '50%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-start'
+            }}
+          >
+            <h3
+              style={{
+                margin: '0',
+                padding: '0',
+                fontSize: '14px',
+                fontWeight: 'normal',
+                fontFamily: 'Arial, sans-serif'
+              }}
+            >
+              Column Order
+            </h3>
+
+            <ListComponent
+              selectedIndex={ORDER_INDEX[order["col"]]}
+              handleItemClick={handleColItemClick}
+            />
+          </div>
         </div>
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-          <h3 style={{ margin: '0', padding: '0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}>
-            Col Order
-          </h3>
-          <ListComponent selectedIndex={ORDER_INDEX[order["col"]]} handleItemClick={handleColItemClick} />
-        </div>
+        {/* Cluster depth controls */}
+        {(order.row === 'cluster' || order.col === 'cluster') && (
+          <div
+            style={{
+              marginLeft: '10px',
+              marginRight: '10px',
+              marginTop: '8px',
+              marginBottom: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}
+          >
+
+            {order.row === 'cluster' && (
+              <div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: 'Arial, sans-serif',
+                    marginBottom: '2px'
+                  }}
+                >
+                  Row Cluster Detail
+                </div>
+
+                <CustomSlider
+                  setClusterValue={setRowClusterValue}
+                />
+              </div>
+            )}
+
+            {order.col === 'cluster' && (
+              <div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: 'Arial, sans-serif',
+                    marginBottom: '2px'
+                  }}
+                >
+                  Column Cluster Detail
+                </div>
+
+                <CustomSlider
+                  setClusterValue={setColClusterValue}
+                />
+              </div>
+            )}
+
+          </div>
+        )}
         {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm} />}
         <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={{
@@ -380,9 +509,52 @@ export default function PersistentDrawerLeft({
           </div>}
 
         {chatContent && (
-          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <h3 style={{ margin: '0', marginBottom: '6px', padding: '0', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif' }}> AI Assistant </h3> {chatContent}
-          </div>)}
+          <div
+            ref={aiPanelRef}
+            onClick={isAIExpanded ? undefined : () => setIsAIExpanded(true)}
+            style={
+              isAIExpanded
+                ? {
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  zIndex: 1500,
+                  backgroundColor: '#ffffff',
+                  boxSizing: 'border-box',
+                  padding: '16px',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                }
+                : {
+                  marginLeft: '10px',
+                  marginRight: '10px',
+                  marginTop: '20px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid #e0e0e0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-start',
+                  cursor: 'pointer',
+                }
+            }
+          >
+            <h3
+              style={{
+                margin: '0',
+                marginBottom: isAIExpanded ? '12px' : '6px',
+                padding: '0',
+                fontSize: isAIExpanded ? '16px' : '14px',
+                fontWeight: isAIExpanded ? 600 : 'normal',
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+            </h3>
+
+            {chatContent(() => setIsAIExpanded(false))}
+          </div>
+        )}
 
         {/* previous line */}
         {/* {ID==='olinkPatientHeatmap' && setState &&

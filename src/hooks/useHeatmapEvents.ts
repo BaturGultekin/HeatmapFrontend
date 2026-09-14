@@ -26,41 +26,41 @@ export const useHeatmapEvents = (
 
   const notifyDataSuccess = (fileName: string) => {
     hideLoading();
-    addNotification({
-      type: 'success',
-      title: 'Heatmap Ready!',
-      message: `Successfully processed ${fileName}. Your visualization is ready.`,
-      duration: 4000
-    });
+    // addNotification({
+    //   type: 'success',
+    //   title: 'Heatmap Ready!',
+    //   message: `Successfully processed ${fileName}. Your visualization is ready.`,
+    //   duration: 4000
+    // });
   };
-  
+
   const notifyDataError = (errorMsg: string) => {
     hideLoading();
-    addNotification({
-      type: 'error',
-      title: 'Data Processing Failed',
-      message: `There was an error processing your file: ${errorMsg}`,
-      duration: 5000
-    });
+    // addNotification({
+    //   type: 'error',
+    //   title: 'Data Processing Failed',
+    //   message: `There was an error processing your file: ${errorMsg}`,
+    //   duration: 5000
+    // });
   };
 
-    // Function to show the loading overlay for clustering
-    const notifyClusteringStarted = () => {
-        showLoading('Applying clustering and re-ordering heatmap...');
-      };
-    
-      // Function to show a success pop-up after clustering
-      const notifyClusteringSuccess = () => {
-        hideLoading(); // Hide the main loading bar
-        addNotification({
-          type: 'success',
-          title: 'Clustering Applied! 🔗',
-          message: 'The heatmap has been re-ordered. You can now click on the new cluster dendrograms that appear on the axes to analyze specific groups.',
-          duration: 5000, // Auto-hide after 5 seconds
-        });
-      };
+  // Function to show the loading overlay for clustering
+  const notifyClusteringStarted = () => {
+    showLoading('Applying clustering and re-ordering heatmap...');
+  };
 
-// A generic function to show the loading overlay for any sort
+  // Function to show a success pop-up after clustering
+  const notifyClusteringSuccess = () => {
+    hideLoading(); // Hide the main loading bar
+    // addNotification({
+    //   type: 'success',
+    //   title: 'Clustering Applied! 🔗',
+    //   message: 'The heatmap has been re-ordered. You can now click on the new cluster dendrograms that appear on the axes to analyze specific groups.',
+    //   duration: 5000, // Auto-hide after 5 seconds
+    // });
+  };
+
+  // A generic function to show the loading overlay for any sort
   const notifySortStarted = (sortType: string, dimension: 'rows' | 'columns') => {
     showLoading(`Sorting ${dimension} by ${sortType}...`);
   };
@@ -68,14 +68,14 @@ export const useHeatmapEvents = (
   // A generic function to show a success pop-up after any sort
   const notifySortSuccess = (sortType: string, dimension: 'rows' | 'columns') => {
     hideLoading(); // Hide the main loading bar
-    addNotification({
-      type: 'success',
-      title: 'Sort Complete!',
-      message: `The heatmap ${dimension} have been successfully sorted by ${sortType}.`,
-      duration: 4000
-    });
+    // addNotification({
+    //   type: 'success',
+    //   title: 'Sort Complete!',
+    //   message: `The heatmap ${dimension} have been successfully sorted by ${sortType}.`,
+    //   duration: 4000
+    // });
   };
-    
+
 
   // Return the set of specific functions
   return {
