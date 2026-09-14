@@ -1,8 +1,7 @@
-// ListComponent.jsx
+// ListComponent.tsx
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import React from 'react';
-// import StyledListItemButton from './StyledListItemButton';
 import Divider from '@mui/material/Divider';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
@@ -10,26 +9,71 @@ import { styled } from '@mui/material/styles';
 
 
 const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
-    '&.Mui-selected': {
-      backgroundColor: theme.palette.action.selected,
-    },
-  }));
+  backgroundColor: '#FFFFFF',
+
+  '&:hover': {
+    backgroundColor: '#F5F5F5',
+  },
+
+  '&.Mui-selected': {
+    backgroundColor: theme.palette.primary.main,
+  },
+
+  '&.Mui-selected:hover': {
+    backgroundColor: theme.palette.primary.main,
+  },
+
+  // Click/pressed state
+  '&:active': {
+    backgroundColor: '#90CAF9',
+  },
+
+  '&.Mui-selected:active': {
+    backgroundColor: '#64B5F6',
+  },
+
+  // MUI ripple color
+  '& .MuiTouchRipple-child': {
+    backgroundColor: '#64B5F6',
+  },
+}));
+
 
 interface ListComponentProps {
-    selectedIndex: number;
-    handleItemClick: (index: number) => void;
-  }
-const ListComponent: React.FC<ListComponentProps> = ({ selectedIndex, handleItemClick }) => {
+  selectedIndex: number;
+  handleItemClick: (index: number) => void;
+}
+
+
+const ListComponent: React.FC<ListComponentProps> = ({
+  selectedIndex,
+  handleItemClick
+}) => {
+
   return (
-    <List sx={{ backgroundColor: '#1E90FF', borderRadius: '5px', ml: 0, mr: 0, pt: 0, pb: 0, border: '0.5px solid black' }}>
-      {['A-z', 'Cluster','Sum','Variance'].map((text, idx) => (
+    <List
+      sx={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: '5px',
+        ml: 0,
+        mr: 0,
+        pt: 0,
+        pb: 0,
+        border: '0.5px solid black',
+        overflow: 'hidden'
+      }}
+    >
+      {['A-z', 'Cluster', 'Sum', 'Variance'].map((text, idx) => (
         <React.Fragment key={text}>
-          <ListItem key={text} disablePadding>
+
+          <ListItem disablePadding>
+
             <StyledListItemButton
               sx={{ height: 30 }}
               selected={selectedIndex === idx}
               onClick={() => handleItemClick(idx)}
             >
+
               <ListItemText
                 primary={text}
                 primaryTypographyProps={{
@@ -38,17 +82,28 @@ const ListComponent: React.FC<ListComponentProps> = ({ selectedIndex, handleItem
                     fontWeight: 'bold',
                     fontFamily: 'Arial, sans-serif',
                     textAlign: 'center',
-                    color: '#F5F5F5',
+
+                    // White text when selected,
+                    // dark text when not selected
+                    color:
+                      selectedIndex === idx
+                        ? '#FFFFFF'
+                        : '#1976d2',
                   },
                 }}
               />
+
             </StyledListItemButton>
+
           </ListItem>
+
           {idx !== 3 && <Divider />}
+
         </React.Fragment>
       ))}
     </List>
   );
 };
+
 
 export default ListComponent;

@@ -1,63 +1,45 @@
-
 import Box from "@mui/material/Box";
 import Slider from "@mui/material/Slider";
 import Typography from "@mui/material/Typography";
-import {HEATMAP_WIDTH} from "../const"
 import * as React from "react";
 
 function valuetext(value: number) {
   return String(value);
 }
+
 type CustomSliderProps = {
-  direction: "horizontal" | "vertical";
   setClusterValue: any;
-  width:number;
 };
-export default function CustomSlider({ direction="horizontal",setClusterValue,width}: CustomSliderProps) {
+
+export default function CustomSlider({
+  setClusterValue
+}: CustomSliderProps) {
+
   const [value, setValue] = React.useState<number>(5);
 
-  const handleSliderChange = (event: Event, newValue: number | number[]) => {
-    console.log(event)
+  const handleSliderChange = (
+    event: Event,
+    newValue: number | number[]
+  ) => {
     setValue(newValue as number);
-    if(direction === 'horizontal'){
-      setClusterValue(12-(newValue as number));
-    }
-    else{
-      setClusterValue(newValue as number);
-    }
+
+    // Left = Coarse, Right = Fine
+    setClusterValue(12 - (newValue as number));
   };
 
   return (
     <Box
       sx={{
-        width: direction === 'vertical'?"50px":"120px",
-        height: direction === 'vertical'?"135px":"55px",
-        position: "absolute",
-        top: direction === "vertical"?"15px":"90%",
-        left: direction === 'vertical'?`${97.5}%`:`${width}px`,
-        display: 'flex',
-        flexDirection: direction === 'vertical' ? 'row' : 'column',
-        alignItems: 'center',
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+        boxSizing: "border-box",
+        px: "8px",
       }}
     >
-      {/* Vertical slider: "Coarse" label at top */}
-      {direction === 'vertical' && (
-        <Typography
-          sx={{
-            fontSize: '11px',
-            fontWeight: 'bold',
-            color: '#555',
-            position: 'absolute',
-            top: '-14px',
-            left: '0px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Coarse
-        </Typography>
-      )}
       <Slider
-        orientation={direction}
+        orientation="horizontal"
         value={value}
         onChange={handleSliderChange}
         getAriaValueText={valuetext}
@@ -67,77 +49,78 @@ export default function CustomSlider({ direction="horizontal",setClusterValue,wi
         step={1}
         valueLabelDisplay="off"
         sx={{
+          width: "100%",
+          padding: "12px 0 5px 0",
+
           "& .MuiSlider-rail": {
-            width:direction === 'vertical'?"12px":"100px",
-            height:direction === 'vertical'?"100px":"12px",
+            width: "100%",
+            height: "10px",
             borderRadius: "4px",
             background: "#D3D3D3",
             opacity: 1,
-            clipPath: direction === 'vertical'?"polygon(0% 0%,100% 0%,50% 100%,0% 0%)":"polygon(0% 0%,0% 100%,100% 50%,0% 0%)",
-
+            clipPath:
+              "polygon(0% 0%, 0% 100%, 100% 50%, 0% 0%)",
           },
+
           "& .MuiSlider-track": {
             display: "none",
           },
+
           "& .MuiSlider-thumb": {
-            width: "20px",
-            height: "20px",
+            width: "18px",
+            height: "18px",
             borderRadius: "50%",
             backgroundColor: "#1e90ff",
             border: "4px solid #fff",
-            boxShadow: "0px 3px 1px -2px rgba(0,0,0,0.1), 0px 2px 2px 0px rgba(0,0,0,0.1), 0px 1px 5px 0px rgba(0,0,0,0.1)",
+            boxShadow:
+              "0px 3px 1px -2px rgba(0,0,0,0.1), 0px 2px 2px 0px rgba(0,0,0,0.1), 0px 1px 5px 0px rgba(0,0,0,0.1)",
           },
+
           "& .MuiSlider-thumb:hover": {
-            boxShadow: "0px 3px 1px -2px rgba(0,0,0,0.3), 0px 2px 2px 0px rgba(0,0,0,0.3), 0px 1px 5px 0px rgba(0,0,0,0.3)",
+            boxShadow:
+              "0px 3px 1px -2px rgba(0,0,0,0.3), 0px 2px 2px 0px rgba(0,0,0,0.3), 0px 1px 5px 0px rgba(0,0,0,0.3)",
           },
+
           "& .MuiSlider-thumb.Mui-focusVisible": {
-            boxShadow: "0px 3px 5px 1px rgba(0,0,0,0.3), 0px 1px 10px 2px rgba(0,0,0,0.3), 0px 2px 4px -1px rgba(0,0,0,0.3)",
+            boxShadow:
+              "0px 3px 5px 1px rgba(0,0,0,0.3), 0px 1px 10px 2px rgba(0,0,0,0.3), 0px 2px 4px -1px rgba(0,0,0,0.3)",
           },
+
           "& .MuiSlider-thumb.Mui-active": {
-            boxShadow: "0px 3px 5px 1px rgba(0,0,0,0.5), 0px 1px 10px 2px rgba(0,0,0,0.5), 0px 2px 4px -1px rgba(0,0,0,0.5)",
-          },
-          "& .MuiSlider-thumb:hover .MuiSlider-tooltip": {
-            opacity: 1,
-            pointerEvents: "auto",
+            boxShadow:
+              "0px 3px 5px 1px rgba(0,0,0,0.5), 0px 1px 10px 2px rgba(0,0,0,0.5), 0px 2px 4px -1px rgba(0,0,0,0.5)",
           },
         }}
       />
-      {/* Legend below slider */}
-      {direction === 'horizontal' ? (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            width: '100px',
-            marginTop: '2px',
-          }}
-        >
-          <Typography sx={{ fontSize: '11px', fontWeight: 'bold', color: '#555', marginLeft: '-8px' }}>
-            Coarse
-          </Typography>
-          <Typography sx={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>
-            Fine
-          </Typography>
-        </Box>
-      ) : (
+
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          width: "100%",
+          marginTop: "-2px",
+        }}
+      >
         <Typography
           sx={{
-            fontSize: '11px',
-            fontWeight: 'bold',
-            color: '#555',
-            position: 'absolute',
-            bottom: '18px',
-            left: '3px',
-            whiteSpace: 'nowrap'
+            fontSize: "11px",
+            fontWeight: "bold",
+            color: "#555",
+          }}
+        >
+          Coarse
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: "11px",
+            fontWeight: "bold",
+            color: "#555",
           }}
         >
           Fine
         </Typography>
-      )}
+      </Box>
     </Box>
   );
 }
-
-
-
-

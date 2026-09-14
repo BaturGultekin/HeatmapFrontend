@@ -13,35 +13,35 @@ function Home() {
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     event.target.value = '';
 
     setIsProcessing(true);
     console.log("Selected file:", file);
-    
+
     // Store the file in IndexedDB
     const request = indexedDB.open("HeatmapDB", 1);
-    
-    request.onupgradeneeded = function(event) {
+
+    request.onupgradeneeded = function (event) {
       const db = event.target.result;
       // Create an object store if it doesn't exist
       if (!db.objectStoreNames.contains("files")) {
         db.createObjectStore("files");
       }
     };
-    
-    request.onsuccess = function(event) {
+
+    request.onsuccess = function (event) {
       const db = event.target.result;
       const transaction = db.transaction(["files"], "readwrite");
       const store = transaction.objectStore("files");
-      
+
       // Generate a unique key for the file
       const fileKey = `file_${Date.now()}`;
-      
+
       // Store the actual File object
       const storeRequest = store.put(file, fileKey);
-      
-      storeRequest.onsuccess = function() {
+
+      storeRequest.onsuccess = function () {
         // Open a new tab with a reference to the file
         // window.open(`/heatmap?fileKey=${encodeURIComponent(fileKey)}`, '_blank');
         window.open(`heatmap?fileKey=${encodeURIComponent(fileKey)}`, '_blank');
@@ -49,15 +49,15 @@ function Home() {
 
         setIsProcessing(false);
       };
-      
-      storeRequest.onerror = function(error) {
+
+      storeRequest.onerror = function (error) {
         console.error("Error storing file:", error);
         alert("Failed to prepare the file for visualization. Please try again.");
         setIsProcessing(false);
       };
     };
-    
-    request.onerror = function(error) {
+
+    request.onerror = function (error) {
       console.error("Error opening IndexedDB:", error);
       alert("Failed to prepare the file for visualization. Please try again.");
       setIsProcessing(false);
@@ -89,7 +89,7 @@ function Home() {
             <img src="clusterChirp_icon.svg" alt="Logo1" className="giflogo" />
           </div> */}
         </div>
-        
+
         <div className="home">
           {/* Introduction Text */}
           <Typography
@@ -97,15 +97,16 @@ function Home() {
               textAlign: "justify",
               margin: "30px auto",
               marginBottom: "10px",
-              marginTop:"-5px",
-              maxWidth: "90%",
+              marginTop: "-5px",
+              maxWidth: "99%",
               lineHeight: "1.1",
-              fontWeight:'light',
-              fontSize:'18px'
+              fontWeight: 'light',
+              fontSize: '17.5px'
             }}
           >
-            <strong>Welcome to ClusterChirp!</strong> Upload your tabular data to perform on-the-fly clustering and uncover patterns, trends, and anomalies.
-            Interact directly with the visualizations—or explore your data using our built-in AI chatbot! Powerful analytics with an intuitive user interface.
+            <strong>Welcome to CluterChirp! </strong>
+            Upload your data for on-the-fly clustering to uncover patterns and trends.
+            Interact directly with the visualizations, explore your data using built-in AI Assistant!
             {/* <strong>Welcome to ClusterChirp!</strong>  Upload your data to perform on-the fly clustering and uncover patterns, trends, and anomalies. Interact directly with visualizations or explore using our built-in AI chatbot. Powerful analytics, intuitive interface. */}
           </Typography>
           <Box
@@ -136,7 +137,7 @@ function Home() {
               },
             }}
           >
-           <HeatmapWrapper
+            <HeatmapWrapper
               data={defaultData}
               // id="rnaSeq"
               id="defaultheatmap"
@@ -154,7 +155,7 @@ function Home() {
               marginBottom: "2px",
             }}
           >
-              
+
             <input
               type="file"
               accept=".csv, .tsv, .xlsx, .json"

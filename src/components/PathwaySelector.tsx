@@ -19,7 +19,7 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
   const filteredAndSortedPathways = useMemo(() => {
     let filtered = pathwayResults.filter(pathway => {
       const matchesSearch = pathway.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           pathway.description.toLowerCase().includes(searchTerm.toLowerCase());
+        pathway.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesLibrary = selectedLibrary === 'all' || pathway.library === selectedLibrary;
       return matchesSearch && matchesLibrary;
     });
@@ -58,7 +58,7 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0);
-    
+
     // Predefined color palette for better visual consistency
     const colorPalette = [
       { bg: '#dbeafe', text: '#1e40af' }, // blue
@@ -77,7 +77,7 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
       { bg: '#fdf2f8', text: '#c026d3' }, // fuchsia
       { bg: '#ffe4e6', text: '#e11d48' }  // rose
     ];
-    
+
     // Use hash to select a color from the palette
     const colorIndex = Math.abs(hash) % colorPalette.length;
     return colorPalette[colorIndex];
@@ -341,7 +341,7 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
               ×
             </button>
           </div>
-          
+
           <div style={subtitleStyle}>
             Found {pathwayResults.length} pathways matching "{searchQuery}". Select one to filter your heatmap.
           </div>
@@ -448,11 +448,11 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
                         {pathway.library.replace(/_\d+$/, '')}
                       </span>
                     </div>
-                    
+
                     <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.4', margin: '0 0 8px 0' }}>
                       {pathway.description}
                     </p>
-                    
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#6b7280' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Users style={{ width: '14px', height: '14px' }} />
@@ -464,7 +464,7 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="arrow-icon" style={{ display: 'flex', alignItems: 'center', color: '#3b82f6', opacity: 0, transition: 'opacity 0.2s', marginLeft: '8px' }}>
                     <ArrowRight style={{ width: '18px', height: '18px' }} />
                   </div>
@@ -472,7 +472,7 @@ const PathwaySelector = ({ pathwayResults, onPathwaySelect, onClose, searchQuery
               </div>
             ))}
           </div>
-          
+
           {filteredAndSortedPathways.length === 0 && (
             <div style={emptyStateStyle}>
               <div style={{ color: '#9ca3af', marginBottom: '8px' }}>No pathways found</div>
