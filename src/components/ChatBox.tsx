@@ -64,7 +64,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
         chatContainerRef.current &&
         !chatContainerRef.current.contains(event.target as Node)
       ) {
-        setShowSuggestionsPanel(false);
+        setShowSuggestionsPanel(true); // Keep suggestions open when clicking inside the chat container
       }
     };
 
@@ -197,12 +197,12 @@ const ChatBox: React.FC<ChatInputProps> = ({
     setInputValue(e.target.value);
     // Only show suggestions when input is empty and user focuses
     if (e.target.value !== '') {
-      setShowSuggestionsPanel(false);
+      setShowSuggestionsPanel(true);
     }
   };
 
   const handleInputFocus = (): void => {
-    if (inputValue === '' && showSuggestions && !isProcessing) {
+    if (showSuggestions && !isProcessing) {
       setShowSuggestionsPanel(true);
     }
   };
@@ -241,7 +241,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
         label={placeholder}
         variant="outlined"
         multiline={true}
-        rows={1}
+        minRows={1}
+        maxRows={5}
         value={inputValue}
         onChange={handleInputChange}
         onKeyPress={handleKeyPress}
@@ -343,7 +344,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
 
       {/* Enhanced Suggestions Panel - only show when not processing and no status */}
       {/* Enhanced Suggestions Panel - centered and compact */}
-      {showSuggestions && showSuggestionsPanel && inputValue === '' && !disabled && !isProcessing && !currentStatus && (
+      {showSuggestions && showSuggestionsPanel && !disabled && !isProcessing && !currentStatus && (
         <Paper
           ref={suggestionsRef}
           elevation={1}
