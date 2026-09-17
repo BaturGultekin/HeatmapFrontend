@@ -47,7 +47,7 @@ export const useAppNotifications = (): AppNotificationHook => {
   const removeNotification = (id: number): void => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
-  
+
   // These helpers are now exposed directly
   const showLoading = (message: string): void => {
     setIsLoading(true);

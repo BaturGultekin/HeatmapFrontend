@@ -92,9 +92,9 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
 
   return (
     <Autocomplete
-      sx={{ 
-        m: 0, 
-        width: '100%', 
+      sx={{
+        m: 0,
+        width: '100%',
         height: '80%',
         // Custom styling for the input container to ensure proper wrapping
         '& .MuiAutocomplete-inputRoot': {
@@ -145,7 +145,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
         <TextField
           {...params}
           variant="outlined"
-          label={axis === 'col' ? "Col Categories" : "Row Categories"}
+          label={axis === 'col' ? "Col Categories(max 3)" : "Row Categories (max 3)"}
           placeholder="Categories"
           sx={{
             // Ensure the input field can expand vertically
@@ -164,11 +164,11 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
             key={option}
             value={option}
             disabled={isDisabled}
-            sx={{ 
-              justifyContent: "space-between", 
-              fontSize: '14px', 
-              fontWeight: 'normal', 
-              fontFamily: 'Arial, sans-serif' 
+            sx={{
+              justifyContent: "space-between",
+              fontSize: '14px',
+              fontWeight: 'normal',
+              fontFamily: 'Arial, sans-serif'
             }}
           >
             {option}
