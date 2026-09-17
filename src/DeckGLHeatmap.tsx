@@ -169,8 +169,8 @@ export const DeckGLHeatmap = ({
   const stableOnClick = useMemo(() => ({
     heatmapCell: (info: any, event: any) => {
       // Handle internal logic first
-      // Check if clicking on a cluster (either row or col)
-      if (info?.object?.id === "row-cluster" || info?.object?.id === "col-cluster") {
+      // Check if clicking on a cluster (only row not col)
+      if (info?.object?.id === "row-cluster") {
         console.log('Cluster clicked:', info.object);
         setClickedClusterData({
           Nodes: info.object.nodes,
@@ -236,12 +236,12 @@ export const DeckGLHeatmap = ({
 
       // Handle the filtered data response
       if (res.clustering_result) {
-        addNotification({
-          type: 'success',
-          title: 'Pathway Applied',
-          message: `Heatmap filtered to show ${selectedPathway.gene_count} genes from "${selectedPathway.description}"`,
-          duration: 5000,
-        });
+        // addNotification({
+        //   type: 'success',
+        //   title: 'Pathway Applied',
+        //   message: `Heatmap filtered to show ${selectedPathway.gene_count} genes from "${selectedPathway.description}"`,
+        //   duration: 5000,
+        // });
 
         const parsedResult = typeof res.clustering_result === 'string'
           ? JSON.parse(res.clustering_result)
@@ -316,12 +316,12 @@ export const DeckGLHeatmap = ({
         setPathwayResults(pathway_results);
         setLastSearchQuery(value || message.replace(/show me |list |find /gi, '')); // Clean up the query for display
         setShowPathwaySelector(true);
-        addNotification({
-          type: 'success',
-          title: 'Pathways Found',
-          message: `Found ${pathway_results.length} pathways. Please select one to filter your heatmap.`,
-          duration: 3000,
-        });
+        // addNotification({
+        //   type: 'success',
+        //   title: 'Pathways Found',
+        //   message: `Found ${pathway_results.length} pathways. Please select one to filter your heatmap.`,
+        //   duration: 3000,
+        // });
         setCommandHistory((prev) => [...prev, message]);
         return { success: true, message: "Pathway search completed" };
       }
@@ -371,12 +371,12 @@ export const DeckGLHeatmap = ({
             notificationMessage = `Distance metric set to "${value}". Rows and columns now sorted by cluster order.`;
           }
 
-          addNotification({
-            type: 'success',
-            title: notificationTitle,
-            message: notificationMessage,
-            duration: 5000,
-          });
+          // addNotification({
+          //   type: 'success',
+          //   title: notificationTitle,
+          //   message: notificationMessage,
+          //   duration: 5000,
+          // });
         }
 
         setDataVersion(prev => prev + 1); // This will trigger the worker and its own notifications

@@ -140,7 +140,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
     if (originalCount && originalCount > nodeCount) {
       message = `Network created for ${clusterName}. Displaying ${nodeCount} of ${originalCount} genes after filtering.`;
     }
-    addNotification({ type: 'success', title: 'Network Ready! 🎉', message, duration: 3000 });
+    // addNotification({ type: 'success', title: 'Network Ready! 🎉', message, duration: 3000 });
     // Auto-scroll to network section
     setTimeout(() => {
       const networkSection = document.querySelector('[data-network-section]');
@@ -186,7 +186,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
     try {
       const results = await getEnrichmentData(genes, sessionId.current);
       setPathwayAnalysisData({ clusterName, enrichmentResults: results });
-      addNotification({ type: 'success', title: 'Analysis Complete!', message: `Enrichment results for ${clusterName} are ready to view.`, duration: 3000 });
+      // addNotification({ type: 'success', title: 'Analysis Complete!', message: `Enrichment results for ${clusterName} are ready to view.`, duration: 3000 });
       // Auto-scroll to pathway section
       setTimeout(() => {
         const pathwaySection = document.querySelector('[data-pathway-section]');

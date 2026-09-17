@@ -23,7 +23,7 @@
 // const SearchBox:React.FC<SearchBoxProps>  = ({ elements,setSearchTerm}) => {
 //   const [searchText, setSearchText] = useState('');
 //   const [filteredOptions,setFilteredOptions] = useState<string[]>([]);
-  
+
 // //   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 // //     setSearchText(event.target.value);
 // //     setSearchTerm(event.target.value);
@@ -94,7 +94,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ elements, setSearchTerm }) => {
   // const searchIconRef = useRef<HTMLDivElement>(null);
   const searchIconRef = useRef<SVGSVGElement>(null);
 
-  
+
   // Update filtered options whenever searchText changes, but don't update the search term yet
   useEffect(() => {
     if (searchText.trim().length === 0) {
@@ -166,7 +166,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ elements, setSearchTerm }) => {
                 </React.Fragment>
               ),
             }}
-            placeholder="Search..."
+            placeholder="Search Genes..."
             variant="outlined"
             size="small"
             fullWidth
