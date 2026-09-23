@@ -130,7 +130,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ elements, setSearchTerm }) => {
   };
 
   return (
-    <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px' }}>
+    <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '5px' }}>
       <Autocomplete
         options={filteredOptions}
         getOptionLabel={(option: any) => option}

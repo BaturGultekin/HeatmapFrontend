@@ -8,10 +8,10 @@ import {
   Typography,
   Chip,
   Box,
-  CircularProgress,
-  Alert,
-  Fade,
-  LinearProgress
+  CircularProgress
+  //Alert,
+  //Fade,
+  //LinearProgress
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -90,7 +90,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
       setRecentMessages(prev =>
         prev.filter(msg => {
           const messageAge = now.getTime() - msg.timestamp.getTime();
-          return messageAge < 30000; // Keep messages for 30 seconds in state
+          return messageAge < 90000; // Keep messages for 90 seconds in state
         })
       );
     }, 5000); // Check every 5 seconds
@@ -143,11 +143,17 @@ const ChatBox: React.FC<ChatInputProps> = ({
         const result = await onSendMessage(command);
 
         // Success - use the actual feedback message from the handler
-        setCurrentStatus(result.message || 'Command executed successfully!');
+        //setCurrentStatus(result.message || 'Command executed successfully!');
+        setCurrentStatus('');
         setRecentMessages(prev =>
           prev.map(msg =>
             msg.id === messageId
-              ? { ...msg, status: 'success', response: result.message || 'Heatmap updated' }
+              ? {
+                ...msg,
+                status: result.success ? 'success' : 'error',
+                response: result.success ? result.message : undefined,
+                errorMessage: result.success ? undefined : result.message
+              }
               : msg
           )
         );
@@ -158,8 +164,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
         }
 
         // Clear success message after 3 seconds (increased from 2)
-        const timeoutId = setTimeout(() => setCurrentStatus(''), 3000);
-        setStatusTimeoutId(timeoutId);
+        // const timeoutId = setTimeout(() => setCurrentStatus(''), 1000);
+        // setStatusTimeoutId(timeoutId);
       } catch (error) {
         // Error handling
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -174,7 +180,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
       } finally {
         setIsProcessing(false);
         setInputValue('');
-        setShowSuggestionsPanel(false);
+        setShowSuggestionsPanel(true);
       }
     }
   };
@@ -209,15 +215,16 @@ const ChatBox: React.FC<ChatInputProps> = ({
 
   const closeSuggestions = (): void => {
     setShowSuggestionsPanel(false);
+    onCommandRun?.();
   };
 
-  const closeStatusMessage = (): void => {
-    if (statusTimeoutId) {
-      clearTimeout(statusTimeoutId);
-      setStatusTimeoutId(null);
-    }
-    setCurrentStatus('');
-  };
+  // const closeStatusMessage = (): void => {
+  //   if (statusTimeoutId) {
+  //     clearTimeout(statusTimeoutId);
+  //     setStatusTimeoutId(null);
+  //   }
+  //   setCurrentStatus('');
+  // };
 
   const getStatusIcon = (status: ChatMessage['status']) => {
     switch (status) {
@@ -281,11 +288,11 @@ const ChatBox: React.FC<ChatInputProps> = ({
           elevation={1}
           style={{
             width: '100%',
-            maxHeight: '120px',
-            overflow: 'auto',
-            marginBottom: '8px',
+            marginTop: '6px',
+            marginBottom: '6px',
             boxSizing: 'border-box',
-            backgroundColor: 'rgba(255,255,255,0.95)'
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            overflow: 'visible'
           }}
         >
           {/* Header with clear all button */}
@@ -293,7 +300,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '8px 12px',
+            padding: '6px 12px',
             borderBottom: '1px solid #ddd',
             backgroundColor: '#f5f5f5'
           }}>
@@ -302,182 +309,230 @@ const ChatBox: React.FC<ChatInputProps> = ({
             </Typography>
             <IconButton
               size="small"
-              onClick={() => setRecentMessages([])}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRecentMessages([]);
+              }}
               style={{ padding: '2px' }}
             >
               <CloseIcon style={{ fontSize: 12 }} />
             </IconButton>
           </Box>
 
-          {recentMessages.slice(0, 3).map((message) => ( // Only display latest 3 messages
+          {/* Scrollable recent command list */}
+          <Box
+            style={{
+              maxHeight: '86px',
+              overflowY: recentMessages.length > 3 ? 'auto' : 'hidden',
+            }}
+          >
+            {recentMessages.map((message) => (
+              <Box
+                key={message.id}
+                style={{
+                  height: '32px',
+                  padding: '0 8px',
+                  borderBottom: '1px solid #eee',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                {getStatusIcon(message.status)}
+
+                <Typography
+                  variant="caption"
+                  style={{
+                    flex: 1,
+                    fontSize: '10px',
+                    color: '#444',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {message.text}
+                </Typography>
+
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRecentMessages(prev =>
+                      prev.filter(msg => msg.id !== message.id)
+                    );
+                  }}
+                  style={{ padding: '2px' }}
+                >
+                  <CloseIcon style={{ fontSize: 10, color: '#999' }} />
+                </IconButton>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )
+      }
+
+      {/* Enhanced Suggestions Panel - only show when not processing and no status */}
+      {/* Enhanced Suggestions Panel - centered and compact */}
+      {
+        showSuggestions && showSuggestionsPanel && !disabled && !isProcessing && !currentStatus && (
+          <Paper
+            ref={suggestionsRef}
+            elevation={1}
+            style={{
+              width: "100%",
+              minWidth: "0",
+              maxWidth: "100%",
+              boxSizing: "border-box",
+              padding: "5px",
+              marginTop: "4px",
+              backgroundColor: "#f8f9fa",
+              position: "relative",
+              border: "1px solid #e0e0e0",
+              borderRadius: "6px"
+            }}
+          >
+            {/* Header with close button - more compact */}
+            <Box style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '8px'          // Reduced from 12px
+            }}>
+              <Typography variant="body2" style={{
+                fontWeight: 600,
+                fontSize: '12px'           // Slightly smaller
+              }}>
+                Type a command or choose
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeSuggestions();
+                }}
+                style={{ padding: '2px' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+
+            {Object.entries(suggestions).map(([category, items]) => (
+              <Box
+                key={category}
+                style={{
+                  marginBottom: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '4px',
+                  width: '100%'
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  style={{
+                    fontWeight: 600,
+                    color: '#666',
+                    textTransform: 'uppercase',
+                    fontSize: '10px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {category}
+                </Typography>
+
+                <Box
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "4px",
+                    width: "100%"
+                  }}
+                >
+                  {items.map((suggestion, index) => (
+                    <Chip
+                      key={index}
+                      label={suggestion}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSuggestionClick(suggestion);
+                      }} size="small"
+                      sx={{
+                        cursor: 'pointer',
+                        backgroundColor: '#e3f2fd',
+                        color: '#1976d2',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        height: '24px',
+                        boxShadow: 'none',
+
+                        '&:hover': {
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                        },
+
+                        '&:active': {
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                          boxShadow: 'none',
+                        },
+
+                        '&:focus': {
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                        },
+
+                        '&.Mui-focusVisible': {
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            ))}
+          </Paper>
+        )
+      }
+
+      {/* Only show status while processing */}
+      {
+        isProcessing && (
+          <Box
+            style={{
+              width: '100%',
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
+          >
             <Box
-              key={message.id}
               style={{
-                padding: '8px 12px',
-                borderBottom: '1px solid #eee',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
               }}
             >
-              {getStatusIcon(message.status)}
-              <Typography variant="caption" style={{ flex: 1, fontSize: '11px' }}>
-                {message.text}
-              </Typography>
-              {message.status === 'error' && (
-                <Typography variant="caption" style={{ color: '#f44336', fontSize: '10px' }}>
-                  {message.errorMessage}
-                </Typography>
-              )}
-              {/* Individual close button for each message */}
-              <IconButton
-                size="small"
-                onClick={() => setRecentMessages(prev => prev.filter(msg => msg.id !== message.id))}
-                style={{ padding: '2px' }}
-              >
-                <CloseIcon style={{ fontSize: 10, color: '#999' }} />
-              </IconButton>
-            </Box>
-          ))}
-        </Paper>
-      )}
-
-      {/* Enhanced Suggestions Panel - only show when not processing and no status */}
-      {/* Enhanced Suggestions Panel - centered and compact */}
-      {showSuggestions && showSuggestionsPanel && !disabled && !isProcessing && !currentStatus && (
-        <Paper
-          ref={suggestionsRef}
-          elevation={1}
-          style={{
-            width: "100%",
-            minWidth: "0",
-            maxWidth: "100%",
-            boxSizing: "border-box",
-            padding: "10px",
-            marginTop: "8px",
-            backgroundColor: "#f8f9fa",
-            position: "relative",
-            border: "1px solid #e0e0e0",
-            borderRadius: "6px"
-          }}
-        >
-          {/* Header with close button - more compact */}
-          <Box style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '8px'          // Reduced from 12px
-          }}>
-            <Typography variant="body2" style={{
-              fontWeight: 600,
-              fontSize: '12px'           // Slightly smaller
-            }}>
-              Type a command or choose
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={closeSuggestions}
-              style={{ padding: '2px' }}  // Reduced padding
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-
-          {Object.entries(suggestions).map(([category, items]) => (
-            <Box
-              key={category}
-              style={{
-                marginBottom: '10px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: '4px',
-                width: '100%'
-              }}
-            >
+              <CircularProgress size={16} />
               <Typography
                 variant="caption"
-                style={{
-                  fontWeight: 600,
-                  color: '#666',
-                  textTransform: 'uppercase',
-                  fontSize: '10px',
-                  whiteSpace: 'nowrap'
-                }}
+                style={{ color: '#666', fontSize: '12px' }}
               >
-                {category}
-              </Typography>
-
-              <Box
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "4px",
-                  width: "100%"
-                }}
-              >
-                {items.map((suggestion, index) => (
-                  <Chip
-                    key={index}
-                    label={suggestion}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    style={{
-                      cursor: "pointer",
-                      backgroundColor: "#e3f2fd",
-                      color: "#1976d2",
-                      fontSize: "12px",    // Reduced from 10px
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      height: '24px'      // Consistent height
-                    }}
-                    size="small"
-                  />
-                ))}
-              </Box>
-            </Box>
-          ))}
-        </Paper>
-      )}
-
-      {/* Processing indicator and status messages - combined into one area */}
-      {(isProcessing || (currentStatus && !isProcessing)) && (
-        <Box style={{
-          width: '100%',
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          {isProcessing ? (
-            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CircularProgress size={16} />
-              <Typography variant="caption" style={{ color: '#666', fontSize: '12px' }}>
                 {currentStatus}
               </Typography>
             </Box>
-          ) : (
-            <Fade in={true}>
-              <Box style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
-                <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CheckCircleIcon style={{ color: '#4caf50', fontSize: 16 }} />
-                  <Typography variant="caption" style={{ color: '#4caf50', fontSize: '12px' }}>
-                    {currentStatus}
-                  </Typography>
-                </Box>
-                {/* Close button for success messages */}
-                <IconButton
-                  size="small"
-                  onClick={closeStatusMessage}
-                  style={{ padding: '2px' }}
-                >
-                  <CloseIcon style={{ fontSize: 14, color: '#666' }} />
-                </IconButton>
-              </Box>
-            </Fade>
-          )}
-        </Box>
-      )}
-    </Box>
+          </Box>
+        )
+      }
+
+
+    </Box >
   );
 };
 

@@ -459,9 +459,9 @@ export default function PersistentDrawerLeft({
           </div>
         )}
         {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm} />}
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={{
-            margin: '0', padding: '0', marginTop: '0', marginBottom: '2px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
+            margin: '0', padding: '0', marginTop: '0', marginBottom: '0px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
           }}>
             Opacity Slider
           </h3>
@@ -482,12 +482,12 @@ export default function PersistentDrawerLeft({
 
         <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={{
-            margin: '0', padding: '0', marginTop: '0', marginBottom: '2px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
+            margin: '0', padding: '0', marginTop: '0', marginBottom: '0px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
           }}>
             Matrix Values
           </h3>
         </div>
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '0px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '0px', marginBottom: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           {Legend}
         </div>
 
@@ -499,12 +499,12 @@ export default function PersistentDrawerLeft({
         />
 
         {colCategorynames.length > 0 &&
-          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
             <MultiSelect elements={colCategorynames} order={order} setOrder={setOrder} axis='col' />
           </div>}
 
         {rowCategorynames.length > 0 &&
-          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
             <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrder} axis='row' />
           </div>}
 
@@ -523,16 +523,16 @@ export default function PersistentDrawerLeft({
                   zIndex: 1500,
                   backgroundColor: '#ffffff',
                   boxSizing: 'border-box',
-                  padding: '16px',
+                  padding: '16px 10px',
                   overflowY: 'auto',
                   overflowX: 'hidden',
                 }
                 : {
                   marginLeft: '10px',
                   marginRight: '10px',
-                  marginTop: '20px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e0e0e0',
+                  marginTop: '0px',
+                  paddingTop: '0px',
+                  // borderTop: '1px solid #e0e0e0',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'flex-start',
@@ -543,7 +543,7 @@ export default function PersistentDrawerLeft({
             <h3
               style={{
                 margin: '0',
-                marginBottom: isAIExpanded ? '12px' : '6px',
+                marginBottom: isAIExpanded ? '6px' : '6px',
                 padding: '0',
                 fontSize: isAIExpanded ? '16px' : '14px',
                 fontWeight: isAIExpanded ? 600 : 'normal',

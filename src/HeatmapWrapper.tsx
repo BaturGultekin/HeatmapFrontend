@@ -114,7 +114,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
 
   const handleShowNetwork = (clusterData: any) => {
     const clusterName = `Cluster ${clusterData.metadata.clusterId || ''}`.trim();
-    addNotification({ type: 'info', title: `Preparing Network`, message: `Opening the gene correlation network view for ${clusterName}.`, duration: 3000 });
+    //addNotification({ type: 'info', title: `Preparing Network`, message: `Opening the gene correlation network view for ${clusterName}.`, duration: 3000 });
 
     // ✅ Add small delay to prevent rapid re-renders
     setTimeout(() => {
