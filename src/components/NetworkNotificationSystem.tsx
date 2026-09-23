@@ -19,8 +19,8 @@ interface NetworkNotificationHook {
   loadingMessage: string;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => number;
   removeNotification: (id: number) => void;
-  notifyNetworkStarted: (clusterName: string) => number;
-  notifyNetworkSuccess: (clusterName: string, nodeCount: number, originalCount: number) => number;
+  notifyNetworkStarted: (clusterName: string) => void;
+  notifyNetworkSuccess: (clusterName: string, nodeCount: number, originalCount: number) => void;
   notifyNetworkError: (error: string, clusterName: string) => number;
   notifyDataFetchError: (clusterName: string) => number;
 }
@@ -47,16 +47,16 @@ export const useNetworkNotifications = (): NetworkNotificationHook => {
       timestamp: new Date(),
       ...notification
     };
-    
+
     setNotifications(prev => [...prev, newNotification]);
-    
+
     // Auto remove after duration
     if (notification.autoHide !== false) {
       setTimeout(() => {
         removeNotification(id);
       }, notification.duration || 5000);
     }
-    
+
     return id;
   };
 
@@ -75,38 +75,38 @@ export const useNetworkNotifications = (): NetworkNotificationHook => {
   };
 
   // Network-specific notification methods
-  const notifyNetworkStarted = (clusterName: string): number => {
+  const notifyNetworkStarted = (clusterName: string): void => {
     showLoading(`Creating network for cluster: ${clusterName}`);
-    return addNotification({
-      type: 'info',
-      title: 'Network Generation Started',
-      message: `Generating network visualization for cluster: ${clusterName}`,
-      duration: 3000
-    });
+    // return addNotification({
+    //   type: 'info',
+    //   title: 'Network Generation Started',
+    //   message: `Generating network visualization for cluster: ${clusterName}`,
+    //   duration: 3000
+    // });
   };
 
-//   const notifyNetworkSuccess = (clusterName: string, nodeCount: number): number => {
-//     hideLoading();
-//     return addNotification({
-//       type: 'success',
-//       title: 'Network Created Successfully! 🎉',
-//       message: `Network with ${nodeCount} nodes created for cluster: ${clusterName}. Scroll down to view the network.`,
-//       action: 'scroll',
-//       actionText: 'View Network ↓',
-//       autoHide: false
-//     });
-//   };
+  //   const notifyNetworkSuccess = (clusterName: string, nodeCount: number): number => {
+  //     hideLoading();
+  //     return addNotification({
+  //       type: 'success',
+  //       title: 'Network Created Successfully! 🎉',
+  //       message: `Network with ${nodeCount} nodes created for cluster: ${clusterName}. Scroll down to view the network.`,
+  //       action: 'scroll',
+  //       actionText: 'View Network ↓',
+  //       autoHide: false
+  //     });
+  //   };
 
-const notifyNetworkSuccess = (clusterName: string, nodeCount: number, originalCount?: number): number => {
+  const notifyNetworkSuccess = (clusterName: string, nodeCount: number, originalCount?: number): void => {
     hideLoading();
-    
+
     let message = `Network with ${nodeCount} nodes created for cluster: ${clusterName}.`;
     let notificationType: 'success' | 'warning' | 'info' = 'success';
-    
+
     if (originalCount && originalCount > nodeCount) {
       const filteredOut = originalCount - nodeCount;
       const filterPercentage = (filteredOut / originalCount) * 100;
-      
+
       if (nodeCount === 0) {
         // All genes filtered out
         notificationType = 'info';
@@ -114,7 +114,7 @@ const notifyNetworkSuccess = (clusterName: string, nodeCount: number, originalCo
       } else {
         // Some genes filtered out
         message = `Network created for cluster: ${clusterName}. ${nodeCount} of ${originalCount} genes passed filtering (${filteredOut} genes filtered out).`;
-        
+
         // Show warning if more than 50% of genes were filtered
         if (filterPercentage > 50) {
           notificationType = 'warning';
@@ -122,13 +122,13 @@ const notifyNetworkSuccess = (clusterName: string, nodeCount: number, originalCo
         }
       }
     }
-    
+
     if (nodeCount > 0) {
       message += ' Scroll down to view the network.';
     } else {
       message += ' Scroll down to see the empty network visualization.';
     }
-    
+
     // Determine title based on outcome
     let title = 'Network Created Successfully! 🎉';
     if (nodeCount === 0) {
@@ -136,15 +136,15 @@ const notifyNetworkSuccess = (clusterName: string, nodeCount: number, originalCo
     } else if (notificationType === 'warning') {
       title = 'Network Created (Many Genes Filtered) ⚠️';
     }
-    
-    return addNotification({
-      type: notificationType,
-      title,
-      message,
-      action: 'scroll',
-      actionText: nodeCount > 0 ? 'View Network ↓' : 'View Empty Network ↓',
-      autoHide: false
-    });
+
+    // return addNotification({
+    //   type: notificationType,
+    //   title,
+    //   message,
+    //   action: 'scroll',
+    //   actionText: nodeCount > 0 ? 'View Network ↓' : 'View Empty Network ↓',
+    //   autoHide: false
+    // });
   };
 
   const notifyNetworkError = (error: string, clusterName: string): number => {
@@ -181,11 +181,11 @@ const notifyNetworkSuccess = (clusterName: string, nodeCount: number, originalCo
 };
 
 // Notification Component
-export const NetworkNotificationSystem: React.FC<NetworkNotificationSystemProps> = ({ 
-  notifications, 
-  isLoading, 
-  loadingMessage, 
-  onRemove, 
+export const NetworkNotificationSystem: React.FC<NetworkNotificationSystemProps> = ({
+  notifications,
+  isLoading,
+  loadingMessage,
+  onRemove,
   onActionClick
   // onScrollToNetwork 
 }) => {
@@ -292,7 +292,7 @@ export const NetworkNotificationSystem: React.FC<NetworkNotificationSystemProps>
       }
     `;
     document.head.appendChild(styleElement);
-    
+
     return () => {
       document.head.removeChild(styleElement);
     };
@@ -330,7 +330,7 @@ export const NetworkNotificationSystem: React.FC<NetworkNotificationSystemProps>
               <div style={{ fontSize: '13px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>
                 {notification.message}
               </div>
-              
+
               {/* {notification.action === 'scroll' && (
                 <button
                   className="notification-action-btn"
@@ -343,23 +343,23 @@ export const NetworkNotificationSystem: React.FC<NetworkNotificationSystemProps>
                 </button>
               )} */}
 
-            {notification.action && notification.action.startsWith('scrollTo:') && (
-              <button
-                className="notification-action-btn"
-                onClick={() => {
-                  // ✅ Get the target selector from the action string
-                  const targetSelector = notification.action.split(':')[1];
-                  if (targetSelector) {
-                    onActionClick(targetSelector);
-                  }
-                  onRemove(notification.id);
-                }}
-              >
-                {notification.actionText || 'View'}
-              </button>
-            )}
+              {notification.action && notification.action.startsWith('scrollTo:') && (
+                <button
+                  className="notification-action-btn"
+                  onClick={() => {
+                    // ✅ Get the target selector from the action string
+                    const targetSelector = notification.action.split(':')[1];
+                    if (targetSelector) {
+                      onActionClick(targetSelector);
+                    }
+                    onRemove(notification.id);
+                  }}
+                >
+                  {notification.actionText || 'View'}
+                </button>
+              )}
             </div>
-            
+
             <button
               className="notification-close-btn"
               onClick={() => onRemove(notification.id)}

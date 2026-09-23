@@ -329,12 +329,12 @@ export const DeckGLHeatmap = ({
       // ✅ STEP 2: Check if the backend sent a new data payload
       if (clustering_result) {
         // --- This was a "Data Subsetting" Command (e.g., filter, variance) ---
-        addNotification({
-          type: 'info',
-          title: 'Applying New Data',
-          message: 'Backend processing complete. Applying new data and re-rendering the heatmap...',
-          duration: 4000,
-        });
+        // addNotification({
+        //   type: 'info',
+        //   title: 'Applying New Data',
+        //   message: 'Backend processing complete. Applying new data and re-rendering the heatmap...',
+        //   duration: 4000,
+        // });
 
         const parsedResult = typeof clustering_result === 'string'
           ? JSON.parse(clustering_result)
@@ -428,12 +428,12 @@ export const DeckGLHeatmap = ({
             sortByColCat: "",     // Clear category-based column sorting
             sortColsByRowName: value  // value is the gene name (e.g., "FASLG")
           }));
-          addNotification({
-            type: 'info',
-            title: 'Sorting by Expression',
-            message: `Sorting columns by ${value} expression values`,
-            duration: 3000,
-          });
+          // addNotification({
+          //   type: 'info',
+          //   title: 'Sorting by Expression',
+          //   message: `Sorting columns by ${value} expression values`,
+          //   duration: 3000,
+          // });
         } else if (action === "set_opacity") {
           // Parse the opacity value from the command
           let newOpacityValue = OpacityValue; // Start with current value
@@ -485,11 +485,11 @@ export const DeckGLHeatmap = ({
           }
 
           setOpacityValue(newOpacityValue);
-          addNotification({
-            type: 'info',
-            title: 'Visuals Updated',
-            message: `Opacity: ${OpacityValue.toFixed(1)} → ${newOpacityValue.toFixed(1)}${changeDescription}`
-          });
+          // addNotification({
+          //   type: 'info',
+          //   title: 'Visuals Updated',
+          //   message: `Opacity: ${OpacityValue.toFixed(1)} → ${newOpacityValue.toFixed(1)}${changeDescription}`
+          // });
         }
       }
 

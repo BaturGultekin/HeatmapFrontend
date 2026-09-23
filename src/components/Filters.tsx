@@ -92,7 +92,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
   const applyChanges = () => {
     // Update the state (this can happen asynchronously)
     setFilters(pendingFilters);
-    
+
     // Immediately call render with the current pending filters
     onRenderHeatmap(pendingFilters);
     setHasChanges(false);
@@ -114,7 +114,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
           mt: '28px',
           border: '1px solid rgba(135, 135, 135, 0.6)',
           borderRadius: '4px',
-          padding: '8px',
+          padding: '4px',
           '&:hover': {
             borderColor: 'rgba(0, 0, 0, 0.87)'
           }
@@ -179,7 +179,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
           <FilterListIcon fontSize="small" />
           Filters ({totalFilters})
         </Typography>
-        
+
         {totalFilters > 0 && (
           <Tooltip title="Clear all filters">
             <IconButton
@@ -195,7 +195,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
 
       {/* Row Filters */}
       {pendingFilters.row.length > 0 && (
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 0.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography
               variant="subtitle2"
@@ -212,8 +212,8 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
               size="small"
               variant="text"
               onClick={() => clearAxisFilters('row')}
-              sx={{ 
-                fontSize: '10px', 
+              sx={{
+                fontSize: '10px',
                 minWidth: 'auto',
                 p: 0.5,
                 textTransform: 'none'
@@ -246,7 +246,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
 
       {/* Column Filters */}
       {pendingFilters.col.length > 0 && (
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography
               variant="subtitle2"
@@ -263,8 +263,8 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
               size="small"
               variant="text"
               onClick={() => clearAxisFilters('col')}
-              sx={{ 
-                fontSize: '10px', 
+              sx={{
+                fontSize: '10px',
                 minWidth: 'auto',
                 p: 0.5,
                 textTransform: 'none'
