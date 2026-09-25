@@ -826,16 +826,17 @@ export const DeckGLHeatmap = ({
 
   // ✅ Update the handleRenderHeatmap function to accept current filters
   const handleRenderHeatmap = (currentFilters: any) => {
+    showLoading('Applying filters and re-rendering heatmap...');
     // If there's an active crop, include the cropped row/column names in the filters
     let filtersWithCrop = { ...currentFilters };
 
     if (filteredIdxDict && dataStateRef.current) {
       const { rowLabels, colLabels } = dataStateRef.current;
 
-      // Extract the cropped row and column names
       const croppedRows = rowLabels
         .slice(filteredIdxDict.startY, filteredIdxDict.endY + 1)
         .map((label: any) => label.text);
+
       const croppedCols = colLabels
         .slice(filteredIdxDict.startX, filteredIdxDict.endX + 1)
         .map((label: any) => label.text);
@@ -845,60 +846,78 @@ export const DeckGLHeatmap = ({
         cropFilter: {
           rows: croppedRows,
           cols: croppedCols,
-          rowIndices: { start: filteredIdxDict.startY, end: filteredIdxDict.endY },
-          colIndices: { start: filteredIdxDict.startX, end: filteredIdxDict.endX }
+          rowIndices: {
+            start: filteredIdxDict.startY,
+            end: filteredIdxDict.endY
+          },
+          colIndices: {
+            start: filteredIdxDict.startX,
+            end: filteredIdxDict.endX
+          }
         }
       };
     }
 
-    getRefreshHeatmap(sessionID, filtersWithCrop).then((res) => {
-      if ("error" in res) {
-        console.error("Heatmap Error:", res.error);
-        addNotification({
-          type: 'error',
-          title: 'Heatmap Error',
-          message: typeof res.error === 'string' ? res.error : 'Failed to refresh heatmap data.',
-        });
-        hideLoading();
-        return;
-      }
+    getRefreshHeatmap(sessionID, filtersWithCrop)
+      .then((res) => {
+        if ("error" in res) {
+          console.error("Heatmap Error:", res.error);
 
-      const { clustering_result } = res;
-
-      if (clustering_result) {
-        try {
-          const parsedResult = typeof clustering_result === 'string'
-            ? JSON.parse(clustering_result)
-            : clustering_result;
-
-          filteredData.current = parsedResult;
-
-          // If we applied a crop filter, clear it since the new data is already cropped
-          if (filteredIdxDict) {
-            setFilteredIdxDict(null);
-            setCropBox(null);
-            resetViewToOrigin();
-          }
-
-          setDataVersion(prev => prev + 1);
-        } catch (err) {
-          console.error("❌ Error processing clustering result:", err);
           addNotification({
             type: 'error',
-            title: 'Processing Error',
-            message: 'Failed to parse clustering result from server.',
+            title: 'Heatmap Error',
+            message:
+              typeof res.error === 'string'
+                ? res.error
+                : 'Failed to refresh heatmap data.',
           });
+
+          return;
         }
-      }
-    }).catch((err) => {
-      console.error("❌ Network error refreshing heatmap:", err);
-      addNotification({
-        type: 'error',
-        title: 'Connection Error',
-        message: 'Failed to connect to the server. Please check that the backend is running.',
+
+        const { clustering_result } = res;
+
+        if (clustering_result) {
+          try {
+            const parsedResult =
+              typeof clustering_result === 'string'
+                ? JSON.parse(clustering_result)
+                : clustering_result;
+
+            filteredData.current = parsedResult;
+
+            if (filteredIdxDict) {
+              setFilteredIdxDict(null);
+              setCropBox(null);
+              resetViewToOrigin();
+            }
+
+            setDataVersion(prev => prev + 1);
+
+          } catch (err) {
+            console.error("❌ Error processing clustering result:", err);
+
+            addNotification({
+              type: 'error',
+              title: 'Processing Error',
+              message: 'Failed to parse clustering result from server.',
+            });
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Network error refreshing heatmap:", err);
+
+        addNotification({
+          type: 'error',
+          title: 'Connection Error',
+          message:
+            'Failed to connect to the server. Please check that the backend is running.',
+        });
+      })
+      .finally(() => {
+        hideLoading();
       });
-      hideLoading();
-    });
   };
 
 

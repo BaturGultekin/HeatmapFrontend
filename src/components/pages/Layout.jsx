@@ -62,11 +62,28 @@ function Layout() {
       <header className="header-grid">
         {/* Left: ClusterChirp Logo */}
         <div className="left-section">
-          <img src="clusterchirp_logo.jpg" alt="ClusterChirp Logo" className="logo1" />
-          <div className="circleTextHorizontal">
-            <span className="circleText-cluster">Cluster</span>
-            <span className="circleText-chirp">Chirp</span>
-          </div>
+          <Link
+            to="/"
+            aria-label="Go to ClusterChirp home"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              color: 'inherit',
+              cursor: 'pointer'
+            }}
+          >
+            <img
+              src="clusterchirp_logo.jpg"
+              alt="ClusterChirp Logo"
+              className="logo1"
+            />
+
+            <div className="circleTextHorizontal">
+              <span className="circleText-cluster">Cluster</span>
+              <span className="circleText-chirp">Chirp</span>
+            </div>
+          </Link>
         </div>
 
         {/* Center: Nav Menu */}
@@ -74,7 +91,7 @@ function Layout() {
           <Link to="/" className={`nav-link ${location.pathname === "/" ? "active" : ""}`}>Home</Link>
           <Link to="/example" className={`nav-link ${location.pathname === "/example" ? "active" : ""}`}>Examples</Link>
           <a href="https://gumuslab.github.io/ClusterChirpDocs/intro" target="_blank" rel="noopener noreferrer" className="nav-link">Tutorial/FAQ</a>
-    
+
           {/* <Link to="/example" className={`nav-link ${location.pathname === "/example" ? "active" : ""}`}>Examples</Link> */}
           <Link to="/contact" className={`nav-link ${location.pathname === "/contact" ? "active" : ""}`}>Contact</Link>
         </nav>
