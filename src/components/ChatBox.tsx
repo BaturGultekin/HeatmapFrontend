@@ -84,19 +84,19 @@ const ChatBox: React.FC<ChatInputProps> = ({
   }, [statusTimeoutId]);
 
   // Auto-cleanup old messages after 30 seconds (keep more in memory)
-  useEffect(() => {
-    const cleanup = setInterval(() => {
-      const now = new Date();
-      setRecentMessages(prev =>
-        prev.filter(msg => {
-          const messageAge = now.getTime() - msg.timestamp.getTime();
-          return messageAge < 90000; // Keep messages for 90 seconds in state
-        })
-      );
-    }, 5000); // Check every 5 seconds
+  // useEffect(() => {
+  //   const cleanup = setInterval(() => {
+  //     const now = new Date();
+  //     setRecentMessages(prev =>
+  //       prev.filter(msg => {
+  //         const messageAge = now.getTime() - msg.timestamp.getTime();
+  //         return messageAge < 90000; // Keep messages for 90 seconds in state
+  //       })
+  //     );
+  //   }, 5000); // Check every 5 seconds
 
-    return () => clearInterval(cleanup);
-  }, []);
+  //   return () => clearInterval(cleanup);
+  // }, []);
 
   // Default suggestions based on valid backend actions
   const suggestions = {

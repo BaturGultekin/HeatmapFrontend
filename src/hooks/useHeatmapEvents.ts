@@ -36,12 +36,12 @@ export const useHeatmapEvents = (
 
   const notifyDataError = (errorMsg: string) => {
     hideLoading();
-    // addNotification({
-    //   type: 'error',
-    //   title: 'Data Processing Failed',
-    //   message: `There was an error processing your file: ${errorMsg}`,
-    //   duration: 5000
-    // });
+    addNotification({
+      type: 'error',
+      title: 'Data Processing Failed',
+      message: `There was an error processing your file: ${errorMsg}`,
+      duration: 5000
+    });
   };
 
   // Function to show the loading overlay for clustering
