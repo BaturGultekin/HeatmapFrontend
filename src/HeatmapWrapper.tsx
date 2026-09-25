@@ -251,7 +251,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
             } else if (global_3d_positions_status === 'ready') {
               fetch3DCoords(session_id); // Fetch immediately if already ready
             } else if (global_3d_positions_status === 'failed') {
-              //  addNotification({ type: 'error', title: '3D Layout Failed', message: 'Could not generate global 3D network layout.', duration: 5000 });
+              addNotification({ type: 'error', title: '3D Layout Failed', message: 'Could not generate global 3D network layout.', duration: 5000 });
             } else if (global_3d_positions_status === 'disabled') {
               console.log('ℹ️ 3D coordinate generation is disabled on the server');
               // No polling or fetching needed - 3D features will be unavailable
@@ -328,7 +328,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
       } else {
         // Failed or other unexpected status
         setGlobal3DLoadingStatus('failed'); // Update status state
-        // addNotification({ type: 'error', title: '3D Layout Failed', message: response.message || 'Failed to generate global 3D network layout.', duration: 5000 });
+        addNotification({ type: 'error', title: '3D Layout Failed', message: response.message || 'Failed to generate global 3D network layout.', duration: 5000 });
         // Clear polling interval on failure
         if (global3DTaskPollingId.current) {
           clearInterval(global3DTaskPollingId.current);
@@ -341,7 +341,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
       }
     } catch (error: any) {
       setGlobal3DLoadingStatus('failed'); // Update status state
-      // addNotification({ type: 'error', title: '3D Layout Error', message: `Network error fetching 3D layout: ${error.message}`, duration: 5000 });
+      addNotification({ type: 'error', title: '3D Layout Error', message: `Network error fetching 3D layout: ${error.message}`, duration: 5000 });
       // Clear polling interval on network error
       if (global3DTaskPollingId.current) {
         clearInterval(global3DTaskPollingId.current);
