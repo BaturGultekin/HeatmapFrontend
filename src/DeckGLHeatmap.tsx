@@ -44,6 +44,30 @@ function capitalizeFirstLetter(str: string): string {
   return lowerCaseString.charAt(0).toUpperCase() + lowerCaseString.slice(1);
 }
 
+const getMetadataValues = (catColors: any) => {
+  const metadataValues: Record<string, string[]> = {};
+
+  Object.values(catColors || {}).forEach((category: any) => {
+    Object.keys(category || {}).forEach(label => {
+      const [metadata, ...valueParts] = label.split(':');
+
+      const name = metadata?.trim();
+      const value = valueParts.join(':').trim();
+
+      if (!name || !value) return;
+
+      if (!metadataValues[name]) {
+        metadataValues[name] = [];
+      }
+
+      if (!metadataValues[name].includes(value)) {
+        metadataValues[name].push(value);
+      }
+    });
+  });
+
+  return metadataValues;
+};
 
 interface CropBox {
   startX: number;
@@ -620,6 +644,17 @@ export const DeckGLHeatmap = ({
 
 
   let catTemporary = { "row": {}, "col": {} }
+
+  const activeData = filteredData.current || data;
+
+  const colMetadataValues = getMetadataValues(
+    activeData?.cat_colors?.col
+  );
+
+  const rowMetadataValues = getMetadataValues(
+    activeData?.cat_colors?.row
+  );
+
   let rowCats: Record<string, string> = {};
   let colCats: Record<string, string> = {};
 
@@ -2167,12 +2202,14 @@ export const DeckGLHeatmap = ({
           chatContent={(onCommandRun) => (
             <ChatBox
               onSendMessage={(message: string) => handleOllamaSendClick(message)}
-              onCommandRun={onCommandRun}
               rotatingGifUrl={rotatingGifUrl}
               placeholder="Chat with AI Assistant"
               showSuggestions={true}
               disabled={false}
               width="100%"
+              onCommandRun={onCommandRun}
+              colMetadataValues={colMetadataValues}
+              rowMetadataValues={rowMetadataValues}
             />
           )}
         />
