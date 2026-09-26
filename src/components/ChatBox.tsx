@@ -26,7 +26,16 @@ interface ChatInputProps {
   disabled?: boolean;
   width?: string;
   onCommandRun?: () => void;
+
+  colMetadataValues?: Record<string, string[]>;
+  rowMetadataValues?: Record<string, string[]>;
 }
+
+// interface SuggestionItem {
+//   label: string;
+//   command: string;
+//   execute: boolean;
+// }
 
 interface ChatMessage {
   id: string;
@@ -44,7 +53,9 @@ const ChatBox: React.FC<ChatInputProps> = ({
   showSuggestions = true,
   disabled = false,
   width = "100%",
-  onCommandRun
+  onCommandRun,
+  colMetadataValues = {},
+  rowMetadataValues = {}
 }) => {
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuggestionsPanel, setShowSuggestionsPanel] = useState<boolean>(false);
@@ -56,6 +67,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
   // Refs for click outside detection
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Click outside to close suggestions
   useEffect(() => {
@@ -98,16 +110,62 @@ const ChatBox: React.FC<ChatInputProps> = ({
   //   return () => clearInterval(cleanup);
   // }, []);
 
-  // Default suggestions based on valid backend actions
+  const dynamicFilterSuggestions = Object.entries(colMetadataValues)
+    // Avoid PatientID-like fields with dozens/hundreds of values
+    .filter(([_, values]) => values.length >= 2 && values.length <= 6)
+    .flatMap(([metadata, values]) =>
+      values.map(value => `Filter ${metadata} to ${value}`)
+    )
+    .slice(0, 6);
+
+  const dynamicSortSuggestions = Object.keys(colMetadataValues)
+    .slice(0, 3)
+    .map(metadata => `Sort columns by ${metadata}`);
+
+  // Suggestions based on meta-data and valid backend actions
   const suggestions = {
-    filtering: ["Select males", "Select females", "Show dead patients"],
-    selection: ["Select top 20 most variant genes", "Select top 100 variant rows"],
-    sorting: ["Sort rows by variance", "Sort columns by sum", "Sort by sex"],
-    clustering: ["Cluster the genes", "Cluster the rows", "Cluster columns"],
-    normalization: ["zscore: rows", "zscore: cols"],
-    distance: ["Use euclidean distance", "Use cosine distance", "Use correlation distance", "Use manhattan distance"],
-    search: ["Search for C4BPA", "Find gene CCL2"],
-    visualization: ["Make it dark", "Make it light", "Set opacity to 0.8"]
+    filtering: [
+      ...dynamicFilterSuggestions,
+      "Clear all filters"
+    ],
+
+    selection: [
+      "Select top 20 most variant rows",
+      "Select top 100 variant rows"
+    ],
+
+    sorting: [
+      "Sort rows by variance",
+      "Sort columns by sum",
+      ...dynamicSortSuggestions
+    ],
+
+    clustering: [
+      "Cluster rows",
+      "Cluster columns"
+    ],
+
+    normalization: [
+      "zscore: rows",
+      "zscore: cols"
+    ],
+
+    distance: [
+      "Use euclidean distance",
+      "Use cosine distance",
+      "Use correlation distance",
+      "Use manhattan distance"
+    ],
+
+    search: [
+      "Search for [gene/feature]"
+    ],
+
+    visualization: [
+      "Make it dark",
+      "Make it light",
+      "Set opacity to 0.8"
+    ]
   };
 
   const handleSendClick = async (messageOverride?: string): Promise<void> => {
@@ -193,15 +251,31 @@ const ChatBox: React.FC<ChatInputProps> = ({
   };
 
   const handleSuggestionClick = (suggestion: string): void => {
-    setInputValue(suggestion);
-    setShowSuggestionsPanel(false);
+    if (suggestion === "Search for [gene/feature]") {
+      setInputValue("Search for ");
+      setShowSuggestionsPanel(true);
 
+      // switch from compact/default sidebar view to expanded suggestion view
+      onCommandRun?.();
+
+      // optional: focus cursor into input after opening
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+
+      return;
+    }
+
+    setInputValue('');
+    setShowSuggestionsPanel(false);
     void handleSendClick(suggestion);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ): void => {
     setInputValue(e.target.value);
-    // Only show suggestions when input is empty and user focuses
+
     if (e.target.value !== '') {
       setShowSuggestionsPanel(true);
     }
@@ -244,6 +318,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
     <Box ref={chatContainerRef} style={{ width, position: 'relative' }}>
       {/* Chat Input */}
       <TextField
+        inputRef={inputRef}
         id="outlined-basic"
         label={placeholder}
         variant="outlined"
@@ -459,7 +534,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSuggestionClick(suggestion);
-                      }} size="small"
+                      }}
+                      size="small"
                       sx={{
                         cursor: 'pointer',
                         backgroundColor: '#e3f2fd',
@@ -479,17 +555,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
                           backgroundColor: '#e3f2fd',
                           color: '#1976d2',
                           boxShadow: 'none',
-                        },
-
-                        '&:focus': {
-                          backgroundColor: '#e3f2fd',
-                          color: '#1976d2',
-                        },
-
-                        '&.Mui-focusVisible': {
-                          backgroundColor: '#e3f2fd',
-                          color: '#1976d2',
-                        },
+                        }
                       }}
                     />
                   ))}
