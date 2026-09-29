@@ -145,7 +145,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
         <TextField
           {...params}
           variant="outlined"
-          label={axis === 'col' ? "Column Categories (max 3)" : "Row Categories (max 3)"}
+          label={axis === 'col' ? "Column Categories (max 6)" : "Row Categories (max 6)"}
           placeholder="Categories"
           sx={{
             // Ensure the input field can expand vertically

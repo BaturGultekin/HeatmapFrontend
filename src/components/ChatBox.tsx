@@ -26,7 +26,9 @@ interface ChatInputProps {
   disabled?: boolean;
   width?: string;
   onCommandRun?: () => void;
-
+  onSuggestionsClose?: () => void;
+  externalCommand?: string | null;
+  onExternalCommandHandled?: () => void;
   colMetadataValues?: Record<string, string[]>;
   rowMetadataValues?: Record<string, string[]>;
 }
@@ -54,6 +56,9 @@ const ChatBox: React.FC<ChatInputProps> = ({
   disabled = false,
   width = "100%",
   onCommandRun,
+  onSuggestionsClose,
+  externalCommand,
+  onExternalCommandHandled,
   colMetadataValues = {},
   rowMetadataValues = {}
 }) => {
@@ -68,6 +73,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const suppressNextFocusSuggestionsRef = useRef(false);
 
   // Click outside to close suggestions
   useEffect(() => {
@@ -76,7 +82,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
         chatContainerRef.current &&
         !chatContainerRef.current.contains(event.target as Node)
       ) {
-        setShowSuggestionsPanel(true); // Keep suggestions open when clicking inside the chat container
+        setShowSuggestionsPanel(false); // Keep suggestions closed when clicking inside the chat container
       }
     };
 
@@ -125,37 +131,42 @@ const ChatBox: React.FC<ChatInputProps> = ({
   // Suggestions based on meta-data and valid backend actions
   const suggestions = {
     filtering: [
-      ...dynamicFilterSuggestions,
+      ...dynamicFilterSuggestions.slice(0, 2),
       "Clear all filters"
-    ],
+    ].slice(0, 3),
 
     selection: [
       "Select top 20 most variant rows",
       "Select top 100 variant rows"
-    ],
+    ].slice(0, 3),
 
     sorting: [
       "Sort rows by variance",
       "Sort columns by sum",
       ...dynamicSortSuggestions
-    ],
+    ].slice(0, 3),
 
     clustering: [
       "Cluster rows",
       "Cluster columns"
-    ],
+    ].slice(0, 3),
 
     normalization: [
       "zscore: rows",
       "zscore: cols"
-    ],
+    ].slice(0, 3),
 
     distance: [
       "Use euclidean distance",
       "Use cosine distance",
-      "Use correlation distance",
-      "Use manhattan distance"
-    ],
+      "Use correlation distance"
+    ].slice(0, 3),
+
+    linkage: [
+      "Use average linkage",
+      "Use complete linkage",
+      "Use single linkage"
+    ].slice(0, 3),
 
     search: [
       "Search for [gene/feature]"
@@ -165,15 +176,28 @@ const ChatBox: React.FC<ChatInputProps> = ({
       "Make it dark",
       "Make it light",
       "Set opacity to 0.8"
-    ]
+    ].slice(0, 3)
   };
 
-  const handleSendClick = async (messageOverride?: string): Promise<void> => {
+  const handleSendClick = async (
+    messageOverride?: string,
+    options: {
+      collapsePanel?: boolean;
+      reopenSuggestions?: boolean;
+    } = {}
+  ): Promise<void> => {
+
+    const {
+      collapsePanel = true,
+      reopenSuggestions = true
+    } = options;
     const command = (messageOverride ?? inputValue).trim();
 
     if (command && !disabled && !isProcessing) {
       // Collapse AI panel back to default sidebar
-      onCommandRun?.();
+      if (collapsePanel) {
+        onCommandRun?.();
+      }
       const messageId = Date.now().toString();
       const newMessage: ChatMessage = {
         id: messageId,
@@ -238,7 +262,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
       } finally {
         setIsProcessing(false);
         setInputValue('');
-        setShowSuggestionsPanel(true);
+        setShowSuggestionsPanel(reopenSuggestions);
       }
     }
   };
@@ -271,6 +295,43 @@ const ChatBox: React.FC<ChatInputProps> = ({
     void handleSendClick(suggestion);
   };
 
+  useEffect(() => {
+    if (!externalCommand) return;
+
+    // Commands containing placeholders should NOT be sent to the backend.
+    // Instead, place the partial command into the ChatBox.
+    if (/\[[^\]]+\]/.test(externalCommand)) {
+      const partialCommand = externalCommand
+        .replace(/\[[^\]]+\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trimEnd();
+
+      setInputValue(`${partialCommand} `);
+
+      // Keep Example Commands closed
+      setShowSuggestionsPanel(false);
+
+      // Prevent the automatic focus handler from reopening Example Commands
+      suppressNextFocusSuggestionsRef.current = true;
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+
+      onExternalCommandHandled?.();
+      return;
+    }
+
+    // Complete commands execute immediately.
+    // Keep focused AI view open and Example Commands closed.
+    void handleSendClick(externalCommand, {
+      collapsePanel: false,
+      reopenSuggestions: false
+    });
+
+    onExternalCommandHandled?.();
+  }, [externalCommand]);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ): void => {
@@ -282,6 +343,11 @@ const ChatBox: React.FC<ChatInputProps> = ({
   };
 
   const handleInputFocus = (): void => {
+    if (suppressNextFocusSuggestionsRef.current) {
+      suppressNextFocusSuggestionsRef.current = false;
+      return;
+    }
+
     if (showSuggestions && !isProcessing) {
       setShowSuggestionsPanel(true);
     }
@@ -289,7 +355,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
 
   const closeSuggestions = (): void => {
     setShowSuggestionsPanel(false);
-    onCommandRun?.();
+    onSuggestionsClose?.();
   };
 
   // const closeStatusMessage = (): void => {
@@ -480,7 +546,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
                 fontWeight: 600,
                 fontSize: '12px'           // Slightly smaller
               }}>
-                Type a command or choose
+                Example Commands
               </Typography>
               <IconButton
                 size="small"
