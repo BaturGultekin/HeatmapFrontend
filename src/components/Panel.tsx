@@ -12,7 +12,7 @@ import IconButton from '@mui/material/IconButton';
 import { styled, useTheme } from '@mui/material/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 import FiltersSection from './Filters';
-
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type {
   DataStateShape
 } from '../types';
@@ -71,7 +71,8 @@ export default function PersistentDrawerLeft({
   notifySortStarted,
   setRowClusterValue,
   setColClusterValue,
-  chatContent
+  chatContent,
+  colMetadataValues = {}
 }: {
   parentContainerRef: HTMLDivElement;
   setIsDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -102,10 +103,17 @@ export default function PersistentDrawerLeft({
   notifySortStarted: any;
   setRowClusterValue: React.Dispatch<React.SetStateAction<number>>;
   setColClusterValue: React.Dispatch<React.SetStateAction<number>>;
-  chatContent?: (onCommandRun: () => void) => React.ReactNode;
+  chatContent?: (
+    onCommandRun: () => void,
+    onSuggestionsClose: () => void,
+    externalCommand: string | null,
+    onExternalCommandHandled: () => void
+  ) => React.ReactNode; colMetadataValues?: Record<string, string[]>;
 }) {
   const [isDrawerOpen, setDrawerOpen] = useState(true);
   const [isAIExpanded, setIsAIExpanded] = useState(false);
+  const [isMetadataGuideOpen, setIsMetadataGuideOpen] = useState(false);
+  const [pendingGuideCommand, setPendingGuideCommand] = useState<string | null>(null);
   const aiPanelRef = React.useRef<HTMLDivElement>(null);
   const theme = useTheme();
   // const [selectedRowIndex, setSelectedRowIndex] = useState(0)
@@ -128,6 +136,73 @@ export default function PersistentDrawerLeft({
   const colCategorynames = Object.keys(categories.col);
   const rowCategorynames = Object.keys(categories.row);
 
+  const metadataFilterCommands = Object.entries(colMetadataValues)
+    .filter(([_, values]) => values.length >= 2 && values.length <= 12)
+    .flatMap(([metadata, values]) =>
+      values.map(value => `Filter ${metadata} to ${value}`)
+    );
+
+  const metadataPlaceholderFilterCommands = Object.entries(colMetadataValues)
+    .filter(([_, values]) => values.length > 12)
+    .map(([metadata]) => `Filter ${metadata} to [value]`);
+
+  const metadataSortCommands = Object.keys(colMetadataValues)
+    .map(metadata => `Sort columns by ${metadata}`);
+
+  const metadataCommandGuide = {
+    filtering: [
+      ...metadataFilterCommands,
+      ...metadataPlaceholderFilterCommands,
+      "Clear all filters"
+    ],
+
+    selection: [
+      "Select top 20 most variant rows",
+      "Select top 50 most variant rows",
+      "Select top 100 most variant rows"
+    ],
+
+    sorting: [
+      "Sort rows by variance",
+      "Sort rows by sum",
+      "Sort columns by variance",
+      "Sort columns by sum",
+      ...metadataSortCommands
+    ],
+
+    clustering: [
+      "Cluster rows",
+      "Cluster columns"
+    ],
+
+    normalization: [
+      "zscore: rows",
+      "zscore: cols"
+    ],
+
+    distance: [
+      "Use euclidean distance",
+      "Use cosine distance",
+      "Use correlation distance",
+      "Use manhattan distance"
+    ],
+
+    linkage: [
+      "Use average linkage",
+      "Use complete linkage",
+      "Use single linkage"
+    ],
+
+    search: [
+      "Search for [gene/feature]"
+    ],
+
+    visualization: [
+      "Make it dark",
+      "Make it light",
+      "Set opacity to 0.8"
+    ]
+  };
 
   // const handleRowItemClick = (index: number) => {
   //   console.log('rowitemclick')
@@ -511,7 +586,6 @@ export default function PersistentDrawerLeft({
         {chatContent && (
           <div
             ref={aiPanelRef}
-            onClick={isAIExpanded ? undefined : () => setIsAIExpanded(true)}
             style={
               isAIExpanded
                 ? {
@@ -530,29 +604,196 @@ export default function PersistentDrawerLeft({
                 : {
                   marginLeft: '10px',
                   marginRight: '10px',
-                  marginTop: '0px',
+                  marginTop: '6px',
                   paddingTop: '0px',
-                  // borderTop: '1px solid #e0e0e0',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'flex-start',
-                  cursor: 'pointer',
                 }
             }
           >
-            <h3
+
+            {/* Back button only in expanded AI view */}
+            {isAIExpanded && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAIExpanded(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                  cursor: 'pointer',
+                  width: 'fit-content'
+                }}
+              >
+                <IconButton
+                  size="small"
+                  aria-label="Back to controls"
+                  style={{
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <ArrowBackIcon fontSize="small" />
+                </IconButton>
+
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#555'
+                  }}
+                >
+                  Back to controls
+                </span>
+              </div>
+            )}
+
+            {/* ChatBox section */}
+            <div
+              onClick={
+                isAIExpanded
+                  ? undefined
+                  : () => setIsAIExpanded(true)
+              }
               style={{
-                margin: '0',
-                marginBottom: isAIExpanded ? '6px' : '6px',
-                padding: '0',
-                fontSize: isAIExpanded ? '16px' : '14px',
-                fontWeight: isAIExpanded ? 600 : 'normal',
-                fontFamily: 'Arial, sans-serif',
+                cursor: isAIExpanded ? 'default' : 'pointer'
               }}
             >
-            </h3>
+              {chatContent(
+                () => setIsAIExpanded(false),
+                () => setIsMetadataGuideOpen(true),
+                pendingGuideCommand,
+                () => setPendingGuideCommand(null)
+              )}            </div>
 
-            {chatContent(() => setIsAIExpanded(false))}
+            {/* Metadata-Aware Command Guide */}
+            <div
+              style={{
+                marginTop: '6px',
+                marginBottom: '6px'
+              }}
+            >
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  if (isMetadataGuideOpen) {
+                    // ▲ Close the guide and return to normal controls
+                    setIsMetadataGuideOpen(false);
+                    setIsAIExpanded(false);
+                  } else {
+                    // ▼ Open the guide and enter the focused AI view
+                    setIsMetadataGuideOpen(true);
+                    setIsAIExpanded(true);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 15px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  backgroundColor: '#f8f9fa',
+                  cursor: 'pointer'
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#666'
+                  }}
+                >
+                  Metadata-Aware <br /> Command Guide
+                </span>
+
+                <span
+                  style={{
+                    fontSize: '12px',
+                    color: '#777'
+                  }}
+                >
+                  {isMetadataGuideOpen ? '▲' : '▼'}
+                </span>
+              </div>
+
+              {isMetadataGuideOpen && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    marginTop: '6px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '6px',
+                    backgroundColor: '#ffffff',
+                    maxHeight: isAIExpanded ? 'none' : '320px',
+                    overflowY: isAIExpanded ? 'visible' : 'auto',
+                    padding: '8px'
+                  }}
+                >
+                  {Object.entries(metadataCommandGuide).map(
+                    ([category, commands]) => (
+                      <div
+                        key={category}
+                        style={{
+                          marginBottom: '10px'
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            color: '#666',
+                            textTransform: 'uppercase',
+                            marginBottom: '4px'
+                          }}
+                        >
+                          {category}
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '4px'
+                          }}
+                        >
+                          {commands.map((command, index) => (
+                            <span
+                              key={`${category}-${index}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+
+                                // If the guide is visible in the normal sidebar,
+                                // move into the focused AI view.
+                                setIsAIExpanded(true);
+
+                                // Send this command to ChatBox.
+                                setPendingGuideCommand(command);
+                              }}
+                              style={{
+                                display: 'inline-block',
+                                padding: '4px 7px',
+                                borderRadius: '12px',
+                                backgroundColor: '#e3f2fd',
+                                color: '#1976d2',
+                                fontSize: '11px',
+                                lineHeight: '16px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {command}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

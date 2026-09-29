@@ -2175,6 +2175,7 @@ export const DeckGLHeatmap = ({
           setOpacityValue={setOpacityValue}
           setOrder={setOrder}
           categories={catTemporary}
+          colMetadataValues={colMetadataValues}
           order={order}
           Legend={legendComponent}
           panelWidth={panelWidth}
@@ -2199,7 +2200,12 @@ export const DeckGLHeatmap = ({
           notifySortStarted={notifySortStarted}
           setRowClusterValue={setRowClusterValue}
           setColClusterValue={setColClusterValue}
-          chatContent={(onCommandRun) => (
+          chatContent={(
+            onCommandRun,
+            onSuggestionsClose,
+            externalCommand,
+            onExternalCommandHandled
+          ) => (
             <ChatBox
               onSendMessage={(message: string) => handleOllamaSendClick(message)}
               rotatingGifUrl={rotatingGifUrl}
@@ -2208,6 +2214,9 @@ export const DeckGLHeatmap = ({
               disabled={false}
               width="100%"
               onCommandRun={onCommandRun}
+              onSuggestionsClose={onSuggestionsClose}
+              externalCommand={externalCommand}
+              onExternalCommandHandled={onExternalCommandHandled}
               colMetadataValues={colMetadataValues}
               rowMetadataValues={rowMetadataValues}
             />
