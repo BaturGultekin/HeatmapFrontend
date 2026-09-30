@@ -8,23 +8,37 @@ function valuetext(value: number) {
 }
 
 type CustomSliderProps = {
-  setClusterValue: any;
+  setClusterValue: React.Dispatch<React.SetStateAction<number>>;
+  clusterValue: number;
+  onInteractionStart?: () => void;
 };
 
 export default function CustomSlider({
-  setClusterValue
+  setClusterValue,
+  clusterValue,
+  onInteractionStart,
 }: CustomSliderProps) {
 
-  const [value, setValue] = React.useState<number>(5);
+  const interactionStartedRef = React.useRef(false);
+
+  // ClusterChirp uses the opposite direction internally:
+  // slider left = coarse, slider right = fine
+  const sliderValue = 12 - clusterValue;
 
   const handleSliderChange = (
-    event: Event,
+    _event: Event,
     newValue: number | number[]
   ) => {
-    setValue(newValue as number);
+    if (!interactionStartedRef.current) {
+      onInteractionStart?.();
+      interactionStartedRef.current = true;
+    }
 
-    // Left = Coarse, Right = Fine
     setClusterValue(12 - (newValue as number));
+  };
+
+  const handleSliderCommitted = () => {
+    interactionStartedRef.current = false;
   };
 
   return (
@@ -40,8 +54,9 @@ export default function CustomSlider({
     >
       <Slider
         orientation="horizontal"
-        value={value}
+        value={sliderValue}
         onChange={handleSliderChange}
+        onChangeCommitted={handleSliderCommitted}
         getAriaValueText={valuetext}
         marks={[]}
         min={1}

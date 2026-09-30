@@ -31,6 +31,7 @@ interface ChatInputProps {
   onExternalCommandHandled?: () => void;
   colMetadataValues?: Record<string, string[]>;
   rowMetadataValues?: Record<string, string[]>;
+  backgroundColor?: string;
 }
 
 // interface SuggestionItem {
@@ -59,6 +60,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
   onSuggestionsClose,
   externalCommand,
   onExternalCommandHandled,
+  backgroundColor = 'transparent',
   colMetadataValues = {},
   rowMetadataValues = {}
 }) => {
@@ -397,6 +399,30 @@ const ChatBox: React.FC<ChatInputProps> = ({
         onFocus={handleInputFocus}
         fullWidth={true}
         disabled={disabled || isProcessing}
+        sx={{
+          backgroundColor,
+          border: 'none',
+
+
+          '& .MuiOutlinedInput-root': {
+            backgroundColor,
+            border: 'none',
+
+          },
+
+          // Remove the inner TextField border
+          '& .MuiOutlinedInput-notchedOutline': {
+            border: 'none',
+          },
+
+          '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+            border: 'none',
+          },
+
+          '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            border: 'none',
+          },
+        }}
         InputProps={{
           endAdornment: (
             <InputAdornment position="end">
@@ -416,6 +442,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
           ),
         }}
         style={{
+          border: '0px transparent',
+          overflow: 'visible',
           backgroundImage: rotatingGifUrl ? `url(${rotatingGifUrl})` : 'none',
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -426,14 +454,20 @@ const ChatBox: React.FC<ChatInputProps> = ({
       {/* Recent messages panel - positioned higher to avoid overlap */}
       {recentMessages.length > 0 && !isProcessing && !currentStatus && (
         <Paper
-          elevation={1}
-          style={{
+          elevation={0}
+          sx={{
             width: '100%',
-            marginTop: '6px',
-            marginBottom: '6px',
-            boxSizing: 'border-box',
-            backgroundColor: 'rgba(255,255,255,0.95)',
-            overflow: 'visible'
+            overflow: 'hidden',
+
+            border: '0px solid rgba(102,102,102,0.48)',
+            borderRadius: '0 0 9px 9px',
+
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(235,247,255,0.58))',
+
+            backdropFilter: 'blur(16px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+
+            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.9), 0 3px 10px rgba(25,118,210,0.08)`,
           }}
         >
           {/* Header with clear all button */}
@@ -443,7 +477,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
             alignItems: 'center',
             padding: '6px 12px',
             borderBottom: '1px solid #ddd',
-            backgroundColor: '#f5f5f5'
+            backgroundColor: "transparent"
           }}>
             <Typography variant="caption" style={{ fontSize: '11px', fontWeight: 600, color: '#666' }}>
               Recent Commands
@@ -529,7 +563,7 @@ const ChatBox: React.FC<ChatInputProps> = ({
               boxSizing: "border-box",
               padding: "5px",
               marginTop: "4px",
-              backgroundColor: "#f8f9fa",
+              backgroundColor: "transparent",
               position: "relative",
               border: "1px solid #e0e0e0",
               borderRadius: "6px"
@@ -544,7 +578,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
             }}>
               <Typography variant="body2" style={{
                 fontWeight: 600,
-                fontSize: '12px'           // Slightly smaller
+                fontSize: '12px',           // Slightly smaller,
+                color: '#555',
               }}>
                 Example Commands
               </Typography>

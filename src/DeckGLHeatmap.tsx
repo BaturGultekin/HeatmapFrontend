@@ -76,6 +76,32 @@ interface CropBox {
   endY: number;
 }
 
+interface AnalysisSnapshot {
+  order: {
+    row: string;
+    col: string;
+    rowCat: string[];
+    sortByRowCat: string;
+    colCat: string[];
+    sortByColCat: string;
+    sortColsByRowName: string | null;
+  };
+
+  matrixOrientation: string;
+
+  filters: any;
+
+  rowClustGroup: number;
+  colClustGroup: number;
+
+  opacityValue: number;
+
+  searchTerm: string;
+  pvalThreshold: number;
+
+  filteredData: any | null;
+}
+
 // interface BorderRect {
 //   left: number;
 //   top: number;
@@ -207,11 +233,146 @@ export const DeckGLHeatmap = ({
     col: []
   });
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const MAX_HISTORY = 10;
+
+  const undoStackRef = useRef<AnalysisSnapshot[]>([]);
+  const redoStackRef = useRef<AnalysisSnapshot[]>([]);
+
+  const [, setHistoryVersion] = useState(0);
+
+  const cloneFilters = (value: any) => {
+    return JSON.parse(JSON.stringify(value));
+  };
+
+  const createAnalysisSnapshot = (): AnalysisSnapshot => ({
+    order: {
+      ...order,
+      rowCat: [...order.rowCat],
+      colCat: [...order.colCat],
+    },
+
+    matrixOrientation,
+
+    filters: cloneFilters(filters),
+
+    rowClustGroup,
+    colClustGroup,
+
+    opacityValue: OpacityValue,
+
+    searchTerm,
+    pvalThreshold,
+
+    // Keep only the existing in-memory reference.
+    // Do NOT deep-copy the matrix.
+    filteredData: filteredData.current,
+  });
+
+  const saveUndoPoint = () => {
+    undoStackRef.current.push(createAnalysisSnapshot());
+
+    if (undoStackRef.current.length > MAX_HISTORY) {
+      undoStackRef.current.shift();
+    }
+
+    // Once a new action is performed, redo history is no longer valid.
+    redoStackRef.current = [];
+
+    setHistoryVersion(prev => prev + 1);
+  };
+
+  const setMatrixOrientationWithHistory: React.Dispatch<
+    React.SetStateAction<string>
+  > = (value) => {
+    const nextOrientation =
+      typeof value === 'function'
+        ? value(matrixOrientation)
+        : value;
+
+    if (nextOrientation === matrixOrientation) {
+      return;
+    }
+
+    saveUndoPoint();
+    setMatrixOrientation(nextOrientation);
+  };
+
+  const restoreAnalysisSnapshot = (snapshot: AnalysisSnapshot) => {
+    setOrder({
+      ...snapshot.order,
+      rowCat: [...snapshot.order.rowCat],
+      colCat: [...snapshot.order.colCat],
+    });
+
+    setMatrixOrientation(snapshot.matrixOrientation);
+
+    setFilters(cloneFilters(snapshot.filters));
+
+    setRowClusterValue(snapshot.rowClustGroup);
+    setColClusterValue(snapshot.colClustGroup);
+
+    setOpacityValue(snapshot.opacityValue);
+
+    setSearchTerm(snapshot.searchTerm);
+    setPvalThreshold(snapshot.pvalThreshold);
+
+    // Restore the previous in-memory dataset reference.
+    filteredData.current = snapshot.filteredData;
+
+    // Force the worker to render the restored dataset/state.
+    setDataVersion(prev => prev + 1);
+  };
+
+  const handleUndo = () => {
+    if (undoStackRef.current.length === 0) {
+      return;
+    }
+
+    const currentSnapshot = createAnalysisSnapshot();
+    const previousSnapshot = undoStackRef.current.pop();
+
+    if (!previousSnapshot) {
+      return;
+    }
+
+    redoStackRef.current.push(currentSnapshot);
+
+    if (redoStackRef.current.length > MAX_HISTORY) {
+      redoStackRef.current.shift();
+    }
+
+    restoreAnalysisSnapshot(previousSnapshot);
+
+    setHistoryVersion(prev => prev + 1);
+  };
+
+  const handleRedo = () => {
+    if (redoStackRef.current.length === 0) {
+      return;
+    }
+
+    const currentSnapshot = createAnalysisSnapshot();
+    const nextSnapshot = redoStackRef.current.pop();
+
+    if (!nextSnapshot) {
+      return;
+    }
+
+    undoStackRef.current.push(currentSnapshot);
+
+    if (undoStackRef.current.length > MAX_HISTORY) {
+      undoStackRef.current.shift();
+    }
+
+    restoreAnalysisSnapshot(nextSnapshot);
+
+    setHistoryVersion(prev => prev + 1);
+  };
+
+  const canUndo = undoStackRef.current.length > 0;
+  const canRedo = redoStackRef.current.length > 0;
+
   const previousOrder = usePrevious(order);
-
-
-
-
   tooltipFunction = generateTooltipContent
 
 
@@ -2273,8 +2434,17 @@ export const DeckGLHeatmap = ({
           notifySortStarted={notifySortStarted}
           setRowClusterValue={setRowClusterValue}
           setColClusterValue={setColClusterValue}
+          rowClusterValue={rowClustGroup}
+          colClusterValue={colClustGroup}
+          opacityValue={OpacityValue}
+          pvalThreshold={pvalThreshold}
+          onSliderInteractionStart={saveUndoPoint}
           matrixOrientation={matrixOrientation}
-          setMatrixOrientation={setMatrixOrientation}
+          setMatrixOrientation={setMatrixOrientationWithHistory}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
           chatContent={(
             onCommandRun,
             onSuggestionsClose,
@@ -2294,6 +2464,7 @@ export const DeckGLHeatmap = ({
               onExternalCommandHandled={onExternalCommandHandled}
               colMetadataValues={colMetadataValues}
               rowMetadataValues={rowMetadataValues}
+              backgroundColor="transparent"
             />
           )}
         />
