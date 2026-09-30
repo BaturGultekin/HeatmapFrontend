@@ -5,8 +5,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import MenuIcon from '@mui/icons-material/Menu';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CropIcon from '@mui/icons-material/Crop';
-import { Tooltip } from '@mui/material';
-import Divider from '@mui/material/Divider';
+import { Tooltip, ToggleButton, ToggleButtonGroup } from '@mui/material'; import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import { styled, useTheme } from '@mui/material/styles';
@@ -71,6 +70,8 @@ export default function PersistentDrawerLeft({
   notifySortStarted,
   setRowClusterValue,
   setColClusterValue,
+  matrixOrientation,
+  setMatrixOrientation,
   chatContent,
   colMetadataValues = {}
 }: {
@@ -103,6 +104,8 @@ export default function PersistentDrawerLeft({
   notifySortStarted: any;
   setRowClusterValue: React.Dispatch<React.SetStateAction<number>>;
   setColClusterValue: React.Dispatch<React.SetStateAction<number>>;
+  matrixOrientation: string;
+  setMatrixOrientation: React.Dispatch<React.SetStateAction<string>>;
   chatContent?: (
     onCommandRun: () => void,
     onSuggestionsClose: () => void,
@@ -419,6 +422,77 @@ export default function PersistentDrawerLeft({
           </IconButton>
         </DrawerHeader>
         <Divider />
+
+        <div
+          style={{
+            marginLeft: '10px',
+            marginRight: '10px',
+            marginTop: '8px',
+            marginBottom: '8px'
+          }}
+        >
+
+          <ToggleButtonGroup
+            value={matrixOrientation}
+            exclusive
+            fullWidth
+            size="small"
+            onChange={(_event, newOrientation) => {
+              if (newOrientation !== null) {
+                setMatrixOrientation(newOrientation);
+              }
+            }}
+            sx={{
+              height: '24px',
+
+              '& .MuiToggleButton-root': {
+                textTransform: 'none',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '12px',
+                fontWeight: 600,
+
+                color: '#1976d2',
+                backgroundColor: '#ffffff',
+                borderColor: '#bdbdbd',
+
+                transition:
+                  'background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease',
+
+                '&:hover': {
+                  backgroundColor: '#e3f2fd',
+                  color: '#1976d2',
+                },
+
+                '&.Mui-selected': {
+                  backgroundColor: '#1976d2',
+                  color: '#ffffff',
+
+                  '&:hover': {
+                    backgroundColor: '#1565c0',
+                    color: '#ffffff',
+                  },
+                },
+              },
+
+              '& .MuiToggleButtonGroup-grouped:first-of-type': {
+                borderRadius: '6px 0 0 6px',
+              },
+
+              '& .MuiToggleButtonGroup-grouped:last-of-type': {
+                borderRadius: '0 6px 6px 0',
+              },
+            }}
+          >
+            <ToggleButton value="Original">
+              Original
+            </ToggleButton>
+
+            <ToggleButton value="Transposed">
+              Transposed
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </div>
+
         <div
           style={{
             marginLeft: '10px',

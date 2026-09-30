@@ -139,9 +139,34 @@ export const DeckGLHeatmap = ({
   const [rowClustGroup, setRowClusterValue] = useState(5);
   const [OpacityValue, setOpacityValue] = useState(OPACITY);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+  const [matrixOrientation, setMatrixOrientation] = useState('Original');
   const [order, setOrder] = useState({ row: "alphabetically", col: "alphabetically", rowCat: [] as string[], sortByRowCat: "", colCat: [] as string[], sortByColCat: "", sortColsByRowName: null as string | null });
   // const [order, setOrder] = useState();
   // const [catTemp, setCatTemp] = useState(categories);
+  const visualOrder = useMemo(() => {
+    if (matrixOrientation !== 'Transposed') {
+      return order;
+    }
+
+    return {
+      ...order,
+
+      // Swap display-axis ordering
+      row: order.col,
+      col: order.row,
+
+      // Swap displayed metadata tracks
+      rowCat: order.colCat,
+      colCat: order.rowCat,
+
+      // Swap metadata sorting state
+      sortByRowCat: order.sortByColCat,
+      sortByColCat: order.sortByRowCat,
+
+      // This operation only makes sense in the original orientation for now
+      sortColsByRowName: null
+    };
+  }, [order, matrixOrientation]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pvalThreshold, setPvalThreshold] = useState(0.05);
   const [isTableVisible, setIsTableVisible] = useState(false);
@@ -1220,16 +1245,16 @@ export const DeckGLHeatmap = ({
           data: dataToUse,
           order,
           catTemporary,
-          // Send cropped indices (original data indices from visual selection)
           croppedRowIndices,
           croppedColIndices,
+          transpose: matrixOrientation === 'Transposed',
           messageType: 'dataState',
         });
       } catch (error) {
         console.error("Failed to send data to worker:", error);
       }
     }
-  }, [data, order, dataVersion, croppedRowIndices, croppedColIndices]);
+  }, [data, order, dataVersion, croppedRowIndices, croppedColIndices, matrixOrientation]);
 
 
   // HOOK 4: Sends UI Dimension updates TO the worker.
@@ -1271,27 +1296,39 @@ export const DeckGLHeatmap = ({
     const containerElement = container as HTMLDivElement;
 
     // --- Column category labels ---
-    if (order.colCat.length >= 0 && rowLabelsWidth > 0 && colLabelsWidth > 0) {
+    if (visualOrder.colCat.length >= 0 && rowLabelsWidth > 0 && colLabelsWidth > 0) {
       const oldLabels = containerElement.querySelectorAll('.col-category-label');
       oldLabels.forEach(label => containerElement.removeChild(label));
 
-      for (let i = 0; i < order.colCat.length; i++) {
+      for (let i = 0; i < visualOrder.colCat.length; i++) {
         const label = document.createElement('label');
-        let labelId = order.colCat[i].split(' ').join('_');
+        let labelId = visualOrder.colCat[i].split(' ').join('_');
         if (labelId.includes('#')) labelId = labelId.replace('#', 'no');
         label.id = labelId;
         label.className = 'col-category-label';
         label.style.position = 'absolute';
         const initialGap = INITIAL_GAP;
         const gap = LAYER_GAP;
-        const clusterOffset = order.col === 'cluster' ? (CLUSTER_LAYER_HEIGHT + CLUSTER_LAYER_GAP) : 0;
+        const clusterOffset = visualOrder.col === 'cluster' ? (CLUSTER_LAYER_HEIGHT + CLUSTER_LAYER_GAP) : 0;
         const yPosition = colLabelsWidth - initialGap - clusterOffset - ((i + 1) * (CATEGORY_LAYER_HEIGHT + gap));
         label.style.top = `${yPosition}px`;
-        label.textContent = `${capitalizeFirstLetter(order.colCat[i])}`;
-        if (order.col !== 'cluster') {
-          const catName = order.colCat[i];
+        label.textContent = `${capitalizeFirstLetter(visualOrder.colCat[i])}`;
+        if (visualOrder.col !== 'cluster') {
+          const catName = visualOrder.colCat[i];
+
           label.addEventListener('click', () => {
-            setOrder((prevOrder: any) => ({ ...prevOrder, sortByColCat: catName }));
+            if (matrixOrientation === 'Transposed') {
+              setOrder((prevOrder: any) => ({
+                ...prevOrder,
+                sortByRowCat: catName,
+                sortColsByRowName: null
+              }));
+            } else {
+              setOrder((prevOrder: any) => ({
+                ...prevOrder,
+                sortByColCat: catName
+              }));
+            }
           });
         }
         const offset = labels?.row?.offset ? labels.row.offset : DEFAULT_LABEL_OFFSET + 2;
@@ -1309,11 +1346,22 @@ export const DeckGLHeatmap = ({
     }
 
     // --- Row category labels ---
-    if (order.rowCat.length > 0 && rowLabelsWidth > 0 && colLabelsWidth > 0) {
-      const oldRowLabels = containerElement.querySelectorAll('.row-category-label');
-      oldRowLabels.forEach(label => containerElement.removeChild(label));
+    // Always remove previously rendered row-category labels first.
+    // This is necessary when switching Transposed -> Original,
+    // because visualOrder.rowCat may become empty.
+    const oldRowLabels =
+      containerElement.querySelectorAll('.row-category-label');
 
-      order.rowCat.forEach((cat, i) => {
+    oldRowLabels.forEach(label =>
+      containerElement.removeChild(label)
+    );
+
+    if (
+      visualOrder.rowCat.length > 0 &&
+      rowLabelsWidth > 0 &&
+      colLabelsWidth > 0
+    ) {
+      visualOrder.rowCat.forEach((cat, i) => {
         let labelId = cat.split(' ').join('_');
         if (labelId.includes('#')) labelId = labelId.replace('#', 'no');
         const label = document.createElement('label');
@@ -1321,10 +1369,23 @@ export const DeckGLHeatmap = ({
         label.className = 'row-category-label';
         label.style.position = 'absolute';
         label.textContent = capitalizeFirstLetter(cat);
-        if (order.row !== 'cluster') {
+        if (visualOrder.row !== 'cluster') {
           label.addEventListener('click', () => {
-            setOrder(prev => ({ ...prev, sortByRowCat: cat, sortColsByRowName: null }));
+            if (matrixOrientation === 'Transposed') {
+              setOrder(prev => ({
+                ...prev,
+                sortByColCat: cat,
+                sortColsByRowName: null
+              }));
+            } else {
+              setOrder(prev => ({
+                ...prev,
+                sortByRowCat: cat,
+                sortColsByRowName: null
+              }));
+            }
           });
+
         }
         label.style.fontSize = `${CATEGORY_LAYER_HEIGHT}px`;
         label.style.fontFamily = 'Arial, sans-serif';
@@ -1334,23 +1395,35 @@ export const DeckGLHeatmap = ({
         label.style.width = `${width}px`;
         label.style.color = '#333333';
         label.style.textAlign = 'right';
-        label.style.cursor = order.row !== 'cluster' ? 'pointer' : 'default';
+        label.style.cursor = visualOrder.row !== 'cluster' ? 'pointer' : 'default';
         const gap = LAYER_GAP;
         const catH = CATEGORY_LAYER_HEIGHT;
         const initialGap = INITIAL_GAP;
-        const clusterOffset = order.row === 'cluster' ? (CLUSTER_LAYER_HEIGHT + CLUSTER_LAYER_GAP) : 0;
+        const clusterOffset = visualOrder.row === 'cluster' ? (CLUSTER_LAYER_HEIGHT + CLUSTER_LAYER_GAP) : 0;
         const xPos = panelWidth + rowLabelsWidth - initialGap - clusterOffset - ((i + 1) * (catH + gap)) + catH;
-        const yPos = (heatmapStateRef.current?.height || 0) + colLabelsWidth + 5;
         label.style.left = `${xPos}px`;
-        label.style.top = `${yPos}px`;
-        label.style.transform = 'rotate(90deg)';
-        label.style.transformOrigin = 'top left';
+        if (matrixOrientation === 'Transposed') {
+          // Metadata originally belonged to columns and is now displayed vertically.
+          // Put its titles above the heatmap.
+          label.style.top = `${colLabelsWidth - 18}px`;
+          label.style.transform = 'rotate(-90deg)';
+          label.style.transformOrigin = 'bottom left';
+        } else {
+          // Preserve existing row-metadata behavior.
+          const yPos =
+            (heatmapStateRef.current?.height || 0) +
+            colLabelsWidth +
+            5;
+
+          label.style.top = `${yPos}px`;
+          label.style.transform = 'rotate(90deg)';
+          label.style.transformOrigin = 'top left';
+        }
+
         containerElement.appendChild(label);
       });
     }
-  }, [order.colCat, order.rowCat, order.col, order.row, rowLabelsWidth, colLabelsWidth, panelWidth, isDrawerOpen, labels?.row?.offset, container]);
-
-
+  }, [visualOrder, matrixOrientation, rowLabelsWidth, colLabelsWidth, panelWidth, isDrawerOpen, labels?.row?.offset, container]);
 
   const { viewStates, onViewStateChange, visibleBounds, isZoomedOut, resetViewToOrigin } = useViewStates(
     container,
@@ -1459,7 +1532,7 @@ export const DeckGLHeatmap = ({
       rowLabelsTitle,
       columnLabelsTitle,
       searchTerm,
-      order,
+      order: visualOrder,
       categories: categories, // Assuming `categories` is stable or correctly memoized
       rowSliderVal: rowClustGroup,
       colSliderVal: colClustGroup,
@@ -1486,7 +1559,7 @@ export const DeckGLHeatmap = ({
     colLabelsWidth,
     rowLabelsWidth,
     searchTerm,
-    order,
+    visualOrder,
     rowClustGroup,
     colClustGroup,
     OpacityValue,
@@ -2200,6 +2273,8 @@ export const DeckGLHeatmap = ({
           notifySortStarted={notifySortStarted}
           setRowClusterValue={setRowClusterValue}
           setColClusterValue={setColClusterValue}
+          matrixOrientation={matrixOrientation}
+          setMatrixOrientation={setMatrixOrientation}
           chatContent={(
             onCommandRun,
             onSuggestionsClose,
