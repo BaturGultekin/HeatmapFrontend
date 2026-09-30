@@ -86,7 +86,7 @@
 //     const getPosition = (d: any, {index}: {index: number}) => {
 //       // Calculate shifted position for filtered labels
 //       let adjustedPosition = d.position;
-      
+
 //       if (filteredIdxDict) {
 //         // For filtered data, the index in the filtered array corresponds to the shifted position
 //         // The filtered data already has sequential indices starting from 0
@@ -106,14 +106,14 @@
 //           }
 //         }
 //       }
-      
+
 //       return (axis === 'row' ? [rowPosition[0] + rowOffset, rowPosition[1]] : rowPosition.reverse()) as [number, number];
 //     };
 
 //     // Filter the labels data based on filteredIdxDict and add shifted positions
 //     const getFilteredLabelsData = () => {
 //       const labelsData = axis === 'row' ? dataState.rowLabels : dataState.colLabels;
-      
+
 //       if (!filteredIdxDict) {
 //         return labelsData; // No filtering, return all labels
 //       }
@@ -363,8 +363,8 @@ export function getLabelsLayer({
   const sizeMaxPixels = labelsConfig?.maxSize || DEFAULT_LABEL_MAX_SIZE;
   const normalizedZoom = zoom - BASE_ZOOM;
   let scale = LABEL_SCALE * Math.pow(2, normalizedZoom);
-  const minScale = LABEL_SCALE * 0.125; // Prevent labels from becoming too small
-  const maxScale = LABEL_SCALE * 8;     // Prevent labels from becoming too large
+  const minScale = LABEL_SCALE * 0.125;
+  const maxScale = LABEL_SCALE * 8;
   scale = Math.min(Math.max(scale, minScale), maxScale);
 
   // Determine if aggregation is happening (same logic as getHeatmapGridLayerScatter.ts)
@@ -406,10 +406,10 @@ export function getLabelsLayer({
     id: axis === 'row' ? IDS.LAYERS.ROW_LABELS : IDS.LAYERS.COL_LABELS,
     viewId: axis === 'row' ? IDS.VIEWS.ROW_LABELS : IDS.VIEWS.COL_LABELS,
     data: dataDescriptor,
-    
+
     // --- Optimized Accessors ---
     // Deck.gl calls these functions for each item, passing the `index`.
-    
+
     getPosition: (_: any, { index }: { index: number }) => {
       // If a label is filtered out, move it off-screen to hide it efficiently.
       if (!shouldRenderLabel(index)) {
@@ -457,15 +457,18 @@ export function getLabelsLayer({
     },
 
     // --- Static & Other Properties ---
-    getAngle: labelsConfig?.angle ? labelsConfig.angle : (axis === 'row' ? 0 : 90),
+    getAngle:
+      axis === 'row'
+        ? (labelsConfig?.angle ?? 0)
+        : 60,
     getColor: [0, 0, 0],
     fontFamily: 'Arial, sans-serif',
     background: true,
     sizeUnits: 'meters',
     getTextAnchor: axis === 'row' ? 'end' : 'start',
     // Column labels are smaller to avoid overwhelming the view
-    sizeMaxPixels: axis === 'row' ? cellSize : cellSize * 0.6,
-    sizeScale: axis === 'row' ? scale : scale * 0.7,
+    sizeMaxPixels: axis === 'row' ? cellSize : cellSize * 0.9,
+    sizeScale: axis === 'row' ? scale : scale,
     pickable: true,
     onClick,
 
@@ -487,19 +490,19 @@ export function getLabelsLayer({
     data: [{ title }],
     getText: (d: any) => d.title,
     getPosition: () => {
-        const numVisibleCols = filteredIdxDict ? (filteredIdxDict.endX - filteredIdxDict.startX + 1) : dataState.numColumns;
-        const numVisibleRows = filteredIdxDict ? (filteredIdxDict.endY - filteredIdxDict.startY + 1) : dataState.numRows;
+      const numVisibleCols = filteredIdxDict ? (filteredIdxDict.endX - filteredIdxDict.startX + 1) : dataState.numColumns;
+      const numVisibleRows = filteredIdxDict ? (filteredIdxDict.endY - filteredIdxDict.startY + 1) : dataState.numRows;
 
-        // The title's position is centered on the visible area.
-        const colPosition = [
-            viewState.target[0] + (numVisibleCols * cellWidth) / 2 / (2 ** (zoom - BASE_ZOOM)),
-            -labelSpaceCentering,
-        ];
-        const rowPosition = [
-            -labelSpaceCentering,
-            viewState.target[1] + (numVisibleRows * cellHeight) / 2 / (2 ** (zoom - BASE_ZOOM)),
-        ];
-        return (axis === 'row' ? rowPosition : colPosition) as [number, number];
+      // The title's position is centered on the visible area.
+      const colPosition = [
+        viewState.target[0] + (numVisibleCols * cellWidth) / 2 / (2 ** (zoom - BASE_ZOOM)),
+        -labelSpaceCentering,
+      ];
+      const rowPosition = [
+        -labelSpaceCentering,
+        viewState.target[1] + (numVisibleRows * cellHeight) / 2 / (2 ** (zoom - BASE_ZOOM)),
+      ];
+      return (axis === 'row' ? rowPosition : colPosition) as [number, number];
     },
     getTextAnchor: 'middle',
     getAlignmentBaseline: 'center',
@@ -507,8 +510,8 @@ export function getLabelsLayer({
     getSize: scale < 2 ? (labelsConfig?.titleSize || DEFAULT_LABEL_MAX_SIZE) : 0,
     getAngle: axis === 'row' ? 90 : 45,
     updateTriggers: {
-        getPosition: [dataState.numColumns, dataState.numRows, cellWidth, cellHeight, viewState.zoom, labelSpace, viewState.target, filteredIdxDict],
-        getSize: [scale],
+      getPosition: [dataState.numColumns, dataState.numRows, cellWidth, cellHeight, viewState.zoom, labelSpace, viewState.target, filteredIdxDict],
+      getSize: [scale],
     },
   }) : null;
 
