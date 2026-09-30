@@ -9,10 +9,20 @@ import { styled } from '@mui/material/styles';
 
 
 const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
+  minHeight: '24px',
+  height: '24px',
+  paddingTop: 0,
+  paddingBottom: 0,
+  paddingLeft: '6px',
+  paddingRight: '6px',
+
   backgroundColor: '#FFFFFF',
 
+  transition:
+    'background-color 0.16s ease, color 0.16s ease',
+
   '&:hover': {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#E3F2FD',
   },
 
   '&.Mui-selected': {
@@ -20,19 +30,17 @@ const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
   },
 
   '&.Mui-selected:hover': {
-    backgroundColor: theme.palette.primary.main,
+    backgroundColor: '#1565C0',
   },
 
-  // Click/pressed state
   '&:active': {
-    backgroundColor: '#90CAF9',
+    backgroundColor: '#BBDEFB',
   },
 
   '&.Mui-selected:active': {
-    backgroundColor: '#64B5F6',
+    backgroundColor: '#1565C0',
   },
 
-  // MUI ripple color
   '& .MuiTouchRipple-child': {
     backgroundColor: '#64B5F6',
   },
@@ -54,12 +62,17 @@ const ListComponent: React.FC<ListComponentProps> = ({
     <List
       sx={{
         backgroundColor: '#FFFFFF',
-        borderRadius: '5px',
+
+        border: '1px solid #d0d0d0',
+        borderRadius: '6px',
+
         ml: 0,
         mr: 0,
+        mt: 0,
+
         pt: 0,
         pb: 0,
-        border: '0.5px solid black',
+
         overflow: 'hidden'
       }}
     >
@@ -69,22 +82,23 @@ const ListComponent: React.FC<ListComponentProps> = ({
           <ListItem disablePadding>
 
             <StyledListItemButton
-              sx={{ height: 30 }}
               selected={selectedIndex === idx}
               onClick={() => handleItemClick(idx)}
             >
 
               <ListItemText
                 primary={text}
+                sx={{
+                  margin: 0,
+                }}
                 primaryTypographyProps={{
                   style: {
-                    fontSize: '14px',
-                    fontWeight: 'bold',
+                    fontSize: '13px',
+                    lineHeight: '28px',
+                    fontWeight: 600,
                     fontFamily: 'Arial, sans-serif',
                     textAlign: 'center',
 
-                    // White text when selected,
-                    // dark text when not selected
                     color:
                       selectedIndex === idx
                         ? '#FFFFFF'
@@ -97,7 +111,13 @@ const ListComponent: React.FC<ListComponentProps> = ({
 
           </ListItem>
 
-          {idx !== 3 && <Divider />}
+          {idx !== 3 && (
+            <Divider
+              sx={{
+                borderColor: '#e0e0e0',
+              }}
+            />
+          )}
 
         </React.Fragment>
       ))}

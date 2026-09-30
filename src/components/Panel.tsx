@@ -5,7 +5,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import MenuIcon from '@mui/icons-material/Menu';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CropIcon from '@mui/icons-material/Crop';
-import { Tooltip, ToggleButton, ToggleButtonGroup } from '@mui/material'; import Divider from '@mui/material/Divider';
+import { Tooltip, ToggleButton, ToggleButtonGroup, Button } from '@mui/material';
+import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import { styled, useTheme } from '@mui/material/styles';
@@ -25,7 +26,230 @@ import MultipurposeSlider from './opcatiySlider';
 import ReplayIcon from '@mui/icons-material/Replay';
 import MapIcon from '@mui/icons-material/Map'; // If you want to add a toggle button
 import { ORDER_INDEX } from '../const';
+
 const orderArray = ['alphabetically', 'cluster', 'sum', 'variance']
+
+const SIDEBAR_FONT = 'Arial, sans-serif';
+
+const SIDEBAR_COLORS = {
+  text: '#777777',
+  secondaryText: '#666666',
+  primary: '#1976d2',
+  primaryHover: '#1565c0',
+  disabled: '#bdbdbd',
+  border: '#d0d0d0',
+  background: '#ffffff',
+  subtleBackground: '#f8f9fa',
+};
+
+const sidebarSectionLabelStyle: React.CSSProperties = {
+  margin: 0,
+  padding: 0,
+  fontFamily: SIDEBAR_FONT,
+  fontSize: '13px',
+  fontWeight: 500,
+  lineHeight: 1.4,
+  color: SIDEBAR_COLORS.text,
+};
+
+const sidebarControlText = {
+  fontFamily: SIDEBAR_FONT,
+  fontSize: '13px',
+  fontWeight: 600,
+  textTransform: 'none' as const,
+};
+
+// Liquid-glass surfaces used only for the AI controls.
+// These are intentionally self-contained so the rest of the sidebar keeps
+// the styling you already chose.
+const GlassSurface = styled('div')({
+  position: 'relative',
+  overflow: 'hidden',
+  borderRadius: '10px',
+  border: '1px solid rgba(102, 102, 102, 0.55)',
+  background:
+    'linear-gradient(135deg, rgba(255,255,255,0.82) 0%, rgba(245,250,255,0.66) 42%, rgba(224,242,254,0.46) 100%)',
+  WebkitBackdropFilter: 'blur(16px) saturate(155%)',
+  backdropFilter: 'blur(16px) saturate(155%)',
+  boxShadow:
+    '0 7px 20px rgba(30, 90, 150, 0.10), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(25,118,210,0.08)',
+  isolation: 'isolate',
+  transition:
+    'border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease',
+
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    zIndex: 0,
+    pointerEvents: 'none',
+    background:
+      'radial-gradient(circle at 18% 0%, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.30) 20%, transparent 46%), radial-gradient(circle at 92% 100%, rgba(120,190,255,0.18) 0%, transparent 42%)',
+  },
+
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: 1,
+    left: '8%',
+    right: '8%',
+    height: '1px',
+    zIndex: 0,
+    pointerEvents: 'none',
+    background:
+      'linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent)',
+  },
+
+  '& > *': {
+    position: 'relative',
+    zIndex: 1,
+  },
+});
+
+const GlassInteractive = styled(GlassSurface)({
+  cursor: 'pointer',
+
+  '&:hover': {
+    borderColor: 'rgba(100, 181, 246, 0.95)',
+    background:
+      'linear-gradient(135deg, rgba(255,255,255,0.90) 0%, rgba(235,247,255,0.78) 48%, rgba(207,235,255,0.58) 100%)',
+    boxShadow:
+      '0 9px 24px rgba(25,118,210,0.14), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(25,118,210,0.10)',
+    transform: 'translateY(-1px)',
+  },
+
+  '&:active': {
+    borderColor: SIDEBAR_COLORS.primary,
+    background:
+      'linear-gradient(135deg, rgba(232,244,255,0.96) 0%, rgba(219,238,255,0.86) 50%, rgba(196,226,255,0.70) 100%)',
+    boxShadow:
+      '0 4px 12px rgba(25,118,210,0.15), inset 0 1px 2px rgba(25,118,210,0.10)',
+    transform: 'translateY(0) scale(0.995)',
+  },
+});
+
+const GlassChatSurface = styled(GlassInteractive)({
+  padding: 0,
+
+  // Make the ChatBox's MUI text field visually merge into the glass shell.
+  '& .MuiTextField-root': {
+    margin: 0,
+  },
+
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '9px',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    color: '#666666',
+    fontFamily: SIDEBAR_FONT,
+    transition: 'background-color 160ms ease, box-shadow 160ms ease',
+  },
+
+  '& .MuiOutlinedInput-root:hover': {
+    backgroundColor: 'rgba(227,242,253,0.24)',
+  },
+
+  '& .MuiOutlinedInput-root.Mui-focused': {
+    backgroundColor: 'transparent',
+    boxShadow: 'none',
+  },
+
+  '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
+    border: 'none !important',
+  },
+
+  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+    border: 'none !important',
+  },
+
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    border: 'none !important',
+  },
+
+  '& .MuiInputLabel-root': {
+    color: '#777777',
+    fontFamily: SIDEBAR_FONT,
+  },
+
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: SIDEBAR_COLORS.primary,
+  },
+
+  '& .MuiSvgIcon-root': {
+    color: '#6f7780',
+  },
+
+  '&:hover .MuiSvgIcon-root': {
+    color: SIDEBAR_COLORS.primary,
+  },
+});
+
+const LiquidGlassCommandChip = styled('button')({
+  appearance: 'none',
+  WebkitAppearance: 'none',
+
+  border: '1px solid rgba(25, 118, 210, 0.28)',
+  borderRadius: '10px',
+
+  padding: '5px 8px',
+
+  background:
+    'linear-gradient(135deg, rgba(255,255,255,0.82), rgba(227,242,253,0.62))',
+
+  color: '#1976d2',
+  fontFamily: SIDEBAR_FONT,
+  fontSize: '11px',
+  lineHeight: '15px',
+  fontWeight: 500,
+
+  cursor: 'pointer',
+  textAlign: 'left',
+
+  backdropFilter: 'blur(10px) saturate(150%)',
+  WebkitBackdropFilter: 'blur(10px) saturate(150%)',
+
+  boxShadow: `
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 1px 3px rgba(25,118,210,0.06)
+  `,
+
+  transition:
+    'background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease, transform 0.1s ease',
+
+  '&:hover': {
+    background:
+      'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(187,222,251,0.75))',
+
+    borderColor: '#64b5f6',
+
+    boxShadow: `
+      inset 0 1px 0 rgba(255,255,255,1),
+      0 2px 7px rgba(25,118,210,0.18)
+    `,
+
+    transform: 'translateY(-1px)',
+  },
+
+  '&:active': {
+    background:
+      'linear-gradient(135deg, #1976d2, #1565c0)',
+
+    borderColor: '#1565c0',
+    color: '#ffffff',
+
+    boxShadow: `
+      inset 0 2px 4px rgba(0,0,0,0.12),
+      0 1px 3px rgba(25,118,210,0.18)
+    `,
+
+    transform: 'translateY(0)',
+  },
+
+  '&:focus-visible': {
+    outline: '2px solid rgba(25,118,210,0.30)',
+    outlineOffset: '2px',
+  },
+});
+
 // interface order{
 //     row:string;
 //     col:string;
@@ -70,8 +294,17 @@ export default function PersistentDrawerLeft({
   notifySortStarted,
   setRowClusterValue,
   setColClusterValue,
+  rowClusterValue,
+  colClusterValue,
+  opacityValue,
+  pvalThreshold,
+  onSliderInteractionStart,
   matrixOrientation,
   setMatrixOrientation,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   chatContent,
   colMetadataValues = {}
 }: {
@@ -106,6 +339,15 @@ export default function PersistentDrawerLeft({
   setColClusterValue: React.Dispatch<React.SetStateAction<number>>;
   matrixOrientation: string;
   setMatrixOrientation: React.Dispatch<React.SetStateAction<string>>;
+  rowClusterValue: number;
+  colClusterValue: number;
+  opacityValue: number;
+  pvalThreshold: number;
+  onSliderInteractionStart: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   chatContent?: (
     onCommandRun: () => void,
     onSuggestionsClose: () => void,
@@ -322,6 +564,28 @@ export default function PersistentDrawerLeft({
             top: 1,
             left: 2,
             position: 'absolute',
+            fontFamily: SIDEBAR_FONT,
+            color: SIDEBAR_COLORS.text,
+
+            '& .MuiButton-root': {
+              fontFamily: SIDEBAR_FONT,
+            },
+
+            '& .MuiToggleButton-root': {
+              fontFamily: SIDEBAR_FONT,
+            },
+
+            '& .MuiInputBase-root': {
+              fontFamily: SIDEBAR_FONT,
+            },
+
+            '& .MuiInputLabel-root': {
+              fontFamily: SIDEBAR_FONT,
+            },
+
+            '& .MuiChip-label': {
+              fontFamily: SIDEBAR_FONT,
+            },
           },
           position: 'relative',
           height: '100%',
@@ -427,8 +691,8 @@ export default function PersistentDrawerLeft({
           style={{
             marginLeft: '10px',
             marginRight: '10px',
-            marginTop: '8px',
-            marginBottom: '8px'
+            marginTop: '4px',
+            marginBottom: '6px'
           }}
         >
 
@@ -443,13 +707,10 @@ export default function PersistentDrawerLeft({
               }
             }}
             sx={{
-              height: '24px',
+              height: '30px',
 
               '& .MuiToggleButton-root': {
-                textTransform: 'none',
-                fontFamily: 'Arial, sans-serif',
-                fontSize: '12px',
-                fontWeight: 600,
+                ...sidebarControlText,
 
                 color: '#1976d2',
                 backgroundColor: '#ffffff',
@@ -495,11 +756,74 @@ export default function PersistentDrawerLeft({
 
         <div
           style={{
+            display: 'flex',
+            gap: '6px',
+            marginLeft: '10px',
+            marginRight: '10px',
+            //marginTop: '10px',
+            marginBottom: '6px'
+          }}
+        >
+          <Button
+            size="small"
+            variant="outlined"
+            fullWidth
+            disabled={!canUndo}
+            onClick={onUndo}
+            sx={{
+              ...sidebarControlText,
+              height: '32px',
+              color: SIDEBAR_COLORS.primary,
+              borderColor: SIDEBAR_COLORS.border,
+
+              '&:hover': {
+                borderColor: SIDEBAR_COLORS.primary,
+                backgroundColor: '#e3f2fd',
+              },
+
+              '&.Mui-disabled': {
+                color: SIDEBAR_COLORS.disabled,
+                borderColor: '#e0e0e0',
+              },
+            }}
+          >
+            Undo
+          </Button>
+
+          <Button
+            size="small"
+            variant="outlined"
+            fullWidth
+            disabled={!canRedo}
+            onClick={onRedo}
+            sx={{
+              ...sidebarControlText,
+              height: '32px',
+              color: SIDEBAR_COLORS.primary,
+              borderColor: SIDEBAR_COLORS.border,
+
+              '&:hover': {
+                borderColor: SIDEBAR_COLORS.primary,
+                backgroundColor: '#e3f2fd',
+              },
+
+              '&.Mui-disabled': {
+                color: SIDEBAR_COLORS.disabled,
+                borderColor: '#e0e0e0',
+              },
+            }}
+          >
+            Redo
+          </Button>
+        </div>
+
+        <div
+          style={{
             marginLeft: '10px',
             marginRight: '10px',
             display: 'flex',
             flexDirection: 'row',
-            gap: '16px',
+            gap: '6px',
             alignItems: 'flex-start'
           }}
         >
@@ -513,11 +837,10 @@ export default function PersistentDrawerLeft({
           >
             <h3
               style={{
-                margin: '0',
-                padding: '0',
-                fontSize: '14px',
-                fontWeight: 'normal',
-                fontFamily: 'Arial, sans-serif'
+                ...sidebarSectionLabelStyle,
+                textAlign: 'center',
+                width: '100%',
+                marginBottom: '0px'
               }}
             >
               Row Order
@@ -539,11 +862,10 @@ export default function PersistentDrawerLeft({
           >
             <h3
               style={{
-                margin: '0',
-                padding: '0',
-                fontSize: '14px',
-                fontWeight: 'normal',
-                fontFamily: 'Arial, sans-serif'
+                ...sidebarSectionLabelStyle,
+                textAlign: 'center',
+                width: '100%',
+                marginBottom: '0px'
               }}
             >
               Column Order
@@ -555,14 +877,15 @@ export default function PersistentDrawerLeft({
             />
           </div>
         </div>
+
         {/* Cluster depth controls */}
         {(order.row === 'cluster' || order.col === 'cluster') && (
           <div
             style={{
               marginLeft: '10px',
               marginRight: '10px',
-              marginTop: '8px',
-              marginBottom: '8px',
+              marginTop: '1px',
+              marginBottom: '1px',
               display: 'flex',
               flexDirection: 'column',
               gap: '8px'
@@ -573,9 +896,8 @@ export default function PersistentDrawerLeft({
               <div>
                 <div
                   style={{
-                    fontSize: '12px',
-                    fontFamily: 'Arial, sans-serif',
-                    marginBottom: '2px'
+                    ...sidebarSectionLabelStyle,
+                    marginBottom: '3px'
                   }}
                 >
                   Row Cluster Depth
@@ -583,6 +905,8 @@ export default function PersistentDrawerLeft({
 
                 <CustomSlider
                   setClusterValue={setRowClusterValue}
+                  clusterValue={rowClusterValue}
+                  onInteractionStart={onSliderInteractionStart}
                 />
               </div>
             )}
@@ -591,9 +915,8 @@ export default function PersistentDrawerLeft({
               <div>
                 <div
                   style={{
-                    fontSize: '12px',
-                    fontFamily: 'Arial, sans-serif',
-                    marginBottom: '2px'
+                    ...sidebarSectionLabelStyle,
+                    marginBottom: '3px'
                   }}
                 >
                   Column Cluster Depth
@@ -601,6 +924,8 @@ export default function PersistentDrawerLeft({
 
                 <CustomSlider
                   setClusterValue={setColClusterValue}
+                  clusterValue={colClusterValue}
+                  onInteractionStart={onSliderInteractionStart}
                 />
               </div>
             )}
@@ -608,31 +933,44 @@ export default function PersistentDrawerLeft({
           </div>
         )}
         {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm} />}
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-          <h3 style={{
-            margin: '0', padding: '0', marginTop: '0', marginBottom: '0px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
-          }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <h3 style={sidebarSectionLabelStyle}>
             Opacity Slider
           </h3>
-          <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0.5} maxVal={3} step={0.25} initialVal={1} />
+          <MultipurposeSlider
+            direction='horizontal'
+            setOpacityValue={setOpacityValue}
+            value={opacityValue}
+            minVal={0.5}
+            maxVal={3}
+            step={0.25}
+            initialVal={1}
+            onInteractionStart={onSliderInteractionStart}
+          />
           {/* <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true}/> */}
         </div>
 
         {['olinkHeatmap', 'cytofHeatmap', 'serologyHeatmap', 'rnaseqHeatmap'].includes(ID) && setPvalThreshold &&
-          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <h3 style={{
-              margin: '0', padding: '0', marginTop: '0', marginBottom: '2px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
-            }}>
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <h3 style={{ ...sidebarSectionLabelStyle, marginBottom: '2px' }}>
               P-value Slider
             </h3>
-            <MultipurposeSlider direction='horizontal' setOpacityValue={setPvalThreshold} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true} />
+            <MultipurposeSlider
+              direction='horizontal'
+              setOpacityValue={setPvalThreshold}
+              value={pvalThreshold}
+              minVal={0}
+              maxVal={1}
+              step={0.05}
+              initialVal={0.05}
+              calculateSteps={true}
+              onInteractionStart={onSliderInteractionStart}
+            />
           </div>
         }
 
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-          <h3 style={{
-            margin: '0', padding: '0', marginTop: '0', marginBottom: '0px', fontSize: '14px', fontWeight: 'normal', fontFamily: 'Arial, sans-serif'
-          }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <h3 style={sidebarSectionLabelStyle}>
             Matrix Values
           </h3>
         </div>
@@ -714,9 +1052,10 @@ export default function PersistentDrawerLeft({
 
                 <span
                   style={{
+                    fontFamily: SIDEBAR_FONT,
                     fontSize: '13px',
                     fontWeight: 600,
-                    color: '#555'
+                    color: SIDEBAR_COLORS.text
                   }}
                 >
                   Back to controls
@@ -725,14 +1064,15 @@ export default function PersistentDrawerLeft({
             )}
 
             {/* ChatBox section */}
-            <div
+            <GlassChatSurface
               onClick={
                 isAIExpanded
                   ? undefined
                   : () => setIsAIExpanded(true)
               }
               style={{
-                cursor: isAIExpanded ? 'default' : 'pointer'
+                cursor: isAIExpanded ? 'default' : 'pointer',
+                paddingTop: isAIExpanded ? '10px' : '8px'
               }}
             >
               {chatContent(
@@ -740,7 +1080,8 @@ export default function PersistentDrawerLeft({
                 () => setIsMetadataGuideOpen(true),
                 pendingGuideCommand,
                 () => setPendingGuideCommand(null)
-              )}            </div>
+              )}
+            </GlassChatSurface>
 
             {/* Metadata-Aware Command Guide */}
             <div
@@ -749,7 +1090,7 @@ export default function PersistentDrawerLeft({
                 marginBottom: '6px'
               }}
             >
-              <div
+              <GlassInteractive
                 onClick={(e) => {
                   e.stopPropagation();
 
@@ -767,18 +1108,17 @@ export default function PersistentDrawerLeft({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '8px 15px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  backgroundColor: '#f8f9fa',
-                  cursor: 'pointer'
+                  minHeight: '42px',
+                  padding: '8px 15px'
                 }}
               >
                 <span
                   style={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#666'
+                    fontFamily: SIDEBAR_FONT,
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    lineHeight: 1.25,
+                    color: '#1976d2'
                   }}
                 >
                   Metadata-Aware <br /> Command Guide
@@ -786,25 +1126,23 @@ export default function PersistentDrawerLeft({
 
                 <span
                   style={{
-                    fontSize: '12px',
-                    color: '#777'
+                    fontFamily: SIDEBAR_FONT,
+                    fontSize: '16px',
+                    color: '#1976d2'
                   }}
                 >
                   {isMetadataGuideOpen ? '▲' : '▼'}
                 </span>
-              </div>
+              </GlassInteractive>
 
               {isMetadataGuideOpen && (
-                <div
+                <GlassSurface
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     marginTop: '6px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '6px',
-                    backgroundColor: '#ffffff',
                     maxHeight: isAIExpanded ? 'none' : '320px',
                     overflowY: isAIExpanded ? 'visible' : 'auto',
-                    padding: '8px'
+                    padding: '10px'
                   }}
                 >
                   {Object.entries(metadataCommandGuide).map(
@@ -817,9 +1155,10 @@ export default function PersistentDrawerLeft({
                       >
                         <div
                           style={{
+                            fontFamily: SIDEBAR_FONT,
                             fontSize: '10px',
                             fontWeight: 600,
-                            color: '#666',
+                            color: SIDEBAR_COLORS.secondaryText,
                             textTransform: 'uppercase',
                             marginBottom: '4px'
                           }}
@@ -835,37 +1174,24 @@ export default function PersistentDrawerLeft({
                           }}
                         >
                           {commands.map((command, index) => (
-                            <span
+                            <LiquidGlassCommandChip
+                              type="button"
                               key={`${category}-${index}`}
                               onClick={(e) => {
                                 e.stopPropagation();
 
-                                // If the guide is visible in the normal sidebar,
-                                // move into the focused AI view.
                                 setIsAIExpanded(true);
-
-                                // Send this command to ChatBox.
                                 setPendingGuideCommand(command);
-                              }}
-                              style={{
-                                display: 'inline-block',
-                                padding: '4px 7px',
-                                borderRadius: '12px',
-                                backgroundColor: '#e3f2fd',
-                                color: '#1976d2',
-                                fontSize: '11px',
-                                lineHeight: '16px',
-                                cursor: 'pointer'
                               }}
                             >
                               {command}
-                            </span>
+                            </LiquidGlassCommandChip>
                           ))}
                         </div>
                       </div>
                     )
                   )}
-                </div>
+                </GlassSurface>
               )}
             </div>
           </div>
