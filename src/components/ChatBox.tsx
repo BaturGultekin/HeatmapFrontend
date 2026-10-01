@@ -17,6 +17,7 @@ import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import CloseIcon from '@mui/icons-material/Close';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => Promise<{ success: boolean; message: string }>;
@@ -402,9 +403,12 @@ const ChatBox: React.FC<ChatInputProps> = ({
         sx={{
           backgroundColor,
           border: 'none',
+          color: '#1976d2',
+
 
 
           '& .MuiOutlinedInput-root': {
+            color: '#1976d2',
             backgroundColor,
             border: 'none',
 
@@ -413,14 +417,18 @@ const ChatBox: React.FC<ChatInputProps> = ({
           // Remove the inner TextField border
           '& .MuiOutlinedInput-notchedOutline': {
             border: 'none',
+            color: '#1976d2',
+
           },
 
           '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
             border: 'none',
+            color: '#1976d2',
           },
 
           '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
             border: 'none',
+            color: '#1976d2',
           },
         }}
         InputProps={{
@@ -477,9 +485,9 @@ const ChatBox: React.FC<ChatInputProps> = ({
             alignItems: 'center',
             padding: '6px 12px',
             borderBottom: '1px solid #ddd',
-            backgroundColor: "transparent"
+            backgroundColor: "white"
           }}>
-            <Typography variant="caption" style={{ fontSize: '11px', fontWeight: 600, color: '#666' }}>
+            <Typography variant="caption" style={{ fontSize: '11px', fontWeight: 600, color: '#555' }}>
               Recent Commands
             </Typography>
             <IconButton
@@ -583,16 +591,30 @@ const ChatBox: React.FC<ChatInputProps> = ({
               }}>
                 Example Commands
               </Typography>
-              <IconButton
-                size="small"
+              <Box
+                component="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   closeSuggestions();
+                  onSuggestionsClose?.();
                 }}
-                style={{ padding: '2px' }}
+                sx={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  color: '#1976d2',
+                  fontFamily: 'Arial, sans-serif',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                }}
               >
-                <CloseIcon fontSize="small" />
-              </IconButton>
+                For more
+                <ArrowForwardIcon sx={{ fontSize: '12px' }} />
+              </Box>
             </Box>
 
             {Object.entries(suggestions).map(([category, items]) => (

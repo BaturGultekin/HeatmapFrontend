@@ -86,7 +86,13 @@ export default function MultipurposeSlider({
             width: direction === "vertical" ? "12px" : "100%",
             height: direction === "vertical" ? "100px" : "12px",
             borderRadius: "4px",
-            background: "#D3D3D3",
+
+            background: calculateSteps
+              ? "#D3D3D3"
+              : direction === "vertical"
+                ? "linear-gradient(to top, #e3f2fd 0%, #90caf9 45%, #1976d2 75%, #0d47a1 100%)"
+                : "linear-gradient(to right, #e3f2fd 0%, #90caf9 45%, #1976d2 75%, #0d47a1 100%)",
+
             opacity: 1,
           },
 
@@ -98,7 +104,7 @@ export default function MultipurposeSlider({
             width: "20px",
             height: "20px",
             borderRadius: "50%",
-            backgroundColor: "#1e90ff",
+            backgroundColor: "#1976d2",
             border: "4px solid #fff",
             boxShadow:
               "0px 3px 1px -2px rgba(0,0,0,0.1), 0px 2px 2px 0px rgba(0,0,0,0.1), 0px 1px 5px 0px rgba(0,0,0,0.1)",

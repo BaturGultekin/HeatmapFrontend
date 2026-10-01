@@ -5,7 +5,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import MenuIcon from '@mui/icons-material/Menu';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CropIcon from '@mui/icons-material/Crop';
-import { Tooltip, ToggleButton, ToggleButtonGroup, Button } from '@mui/material';
+import { Tooltip, ToggleButton, ToggleButtonGroup, Button, Box } from '@mui/material';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
@@ -26,6 +26,7 @@ import MultipurposeSlider from './opcatiySlider';
 import ReplayIcon from '@mui/icons-material/Replay';
 import MapIcon from '@mui/icons-material/Map'; // If you want to add a toggle button
 import { ORDER_INDEX } from '../const';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 const orderArray = ['alphabetically', 'cluster', 'sum', 'variance']
 
@@ -166,8 +167,11 @@ const GlassChatSurface = styled(GlassInteractive)({
   },
 
   '& .MuiInputLabel-root': {
-    color: '#777777',
+    color: '#1976d2',
+    backgroundColor: 'transparent',
+    fontWeight: 500,
     fontFamily: SIDEBAR_FONT,
+    fontSize: '15px',
   },
 
   '& .MuiInputLabel-root.Mui-focused': {
@@ -175,7 +179,7 @@ const GlassChatSurface = styled(GlassInteractive)({
   },
 
   '& .MuiSvgIcon-root': {
-    color: '#6f7780',
+    color: '#1976d2'
   },
 
   '&:hover .MuiSvgIcon-root': {
@@ -722,6 +726,7 @@ export default function PersistentDrawerLeft({
                 '&:hover': {
                   backgroundColor: '#e3f2fd',
                   color: '#1976d2',
+                  borderColor: '#64B5F6'
                 },
 
                 '&.Mui-selected': {
@@ -787,7 +792,7 @@ export default function PersistentDrawerLeft({
               },
             }}
           >
-            Undo
+            Undo ↺
           </Button>
 
           <Button
@@ -813,7 +818,7 @@ export default function PersistentDrawerLeft({
               },
             }}
           >
-            Redo
+            Redo ↻
           </Button>
         </div>
 
@@ -971,7 +976,7 @@ export default function PersistentDrawerLeft({
 
         <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={sidebarSectionLabelStyle}>
-            Matrix Values
+            Matrix Values Legend
           </h3>
         </div>
         <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '0px', marginBottom: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
@@ -1027,24 +1032,30 @@ export default function PersistentDrawerLeft({
 
             {/* Back button only in expanded AI view */}
             {isAIExpanded && (
-              <div
+              <Box
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsAIExpanded(false);
                 }}
-                style={{
+                sx={{
                   display: 'flex',
                   alignItems: 'center',
                   marginBottom: '8px',
                   cursor: 'pointer',
-                  width: 'fit-content'
+                  width: 'fit-content',
+                  color: SIDEBAR_COLORS.text,
+
+                  '&:hover': {
+                    color: SIDEBAR_COLORS.primary,
+                  },
                 }}
               >
                 <IconButton
                   size="small"
                   aria-label="Back to controls"
-                  style={{
-                    pointerEvents: 'none'
+                  sx={{
+                    pointerEvents: 'none',
+                    color: 'inherit',
                   }}
                 >
                   <ArrowBackIcon fontSize="small" />
@@ -1055,12 +1066,12 @@ export default function PersistentDrawerLeft({
                     fontFamily: SIDEBAR_FONT,
                     fontSize: '13px',
                     fontWeight: 600,
-                    color: SIDEBAR_COLORS.text
+                    color: 'inherit',
                   }}
                 >
                   Back to controls
                 </span>
-              </div>
+              </Box>
             )}
 
             {/* ChatBox section */}
@@ -1115,7 +1126,7 @@ export default function PersistentDrawerLeft({
                 <span
                   style={{
                     fontFamily: SIDEBAR_FONT,
-                    fontSize: '16px',
+                    fontSize: '15px',
                     fontWeight: 500,
                     lineHeight: 1.25,
                     color: '#1976d2'
@@ -1124,15 +1135,21 @@ export default function PersistentDrawerLeft({
                   Metadata-Aware <br /> Command Guide
                 </span>
 
-                <span
-                  style={{
-                    fontFamily: SIDEBAR_FONT,
-                    fontSize: '16px',
-                    color: '#1976d2'
+                <ArrowDropDownIcon
+                  className="metadata-guide-arrow"
+                  sx={{
+                    fontSize: '33px',
+                    color: isMetadataGuideOpen
+                      ? SIDEBAR_COLORS.primary
+                      : SIDEBAR_COLORS.primary,
+
+                    transform: isMetadataGuideOpen
+                      ? 'rotate(180deg)'
+                      : 'rotate(0deg)',
+
+                    transition: 'transform 160ms ease, color 160ms ease',
                   }}
-                >
-                  {isMetadataGuideOpen ? '▲' : '▼'}
-                </span>
+                />
               </GlassInteractive>
 
               {isMetadataGuideOpen && (
