@@ -12,7 +12,7 @@ export type LegendProps = {
   legendHeight?: number | string;
   legendWidth?: number | string;
   fontSize?: number | string;
-  unit?:string;
+  unit?: string;
 };
 
 const Legend2 = ({
@@ -39,29 +39,36 @@ const Legend2 = ({
         zIndex: -1, // make sure that the legend renders underneath the tooltip
       }}
     >
-      
+
       {/* <p style={{ marginBlock: 0, margin: 0, fontSize}}>
         <b>{max}</b>
       </p> */}
       <div
         style={{
-            height: '60%',
-            width: '100%',
-            border:'0.5px solid black',
-            backgroundImage: `linear-gradient(
-            to left,
-            ${max > 0 ? `${maxColor}, ` : ''}
-            white
-            ${min < 0 ? `, ${minColor}` : ''}
-            )`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px', 
-            fontWeight: 'normal', 
-            fontFamily: 'Arial, sans-serif'
+          height: '60%',
+          width: '100%',
+
+          backgroundImage: `linear-gradient(
+      to left,
+      ${max > 0 ? `${maxColor}, ` : ''}
+      white
+      ${min < 0 ? `, ${minColor}` : ''}
+    )`,
+
+          border: 'none',
+          outline: 'none',
+          borderRadius: '6px',
+          overflow: 'hidden',
+
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+
+          fontSize: '14px',
+          fontWeight: 'normal',
+          fontFamily: 'Arial, sans-serif'
         }}
-    >
+      >
         {unit}
       </div>
       <div
@@ -70,17 +77,17 @@ const Legend2 = ({
           justifyContent: 'space-between', // Align items to either end
           alignItems: 'center',
           height: '40%', // Height of the container for min and max values
-          marginTop:'5px',
-          fontSize:fontSize,
+          marginTop: '6px',
+          fontSize: fontSize,
         }}
       >
         {/* Min Value */}
         <div>
-          <h3 style={{fontWeight: 'normal', fontFamily: 'Arial, sans-serif', fontSize:'15px'}}>{min.toFixed(1)}</h3>
+          <h3 style={{ fontWeight: 'normal', fontFamily: 'Arial, sans-serif', fontSize: '15px' }}>{min.toFixed(1)}</h3>
         </div>
         {/* Max Value */}
         <div>
-          <h3 style={{fontWeight: 'normal', fontFamily: 'Arial, sans-serif', fontSize:'15px'}}>{max.toFixed(1)}</h3>
+          <h3 style={{ fontWeight: 'normal', fontFamily: 'Arial, sans-serif', fontSize: '15px' }}>{max.toFixed(1)}</h3>
         </div>
       </div>
     </div>
