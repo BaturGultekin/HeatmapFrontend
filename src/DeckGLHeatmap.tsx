@@ -100,6 +100,7 @@ interface AnalysisSnapshot {
   pvalThreshold: number;
 
   filteredData: any | null;
+  commandHistory: string[];
 }
 
 // interface BorderRect {
@@ -233,7 +234,7 @@ export const DeckGLHeatmap = ({
     col: []
   });
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
-  const MAX_HISTORY = 10;
+  const MAX_HISTORY = 20;
 
   const undoStackRef = useRef<AnalysisSnapshot[]>([]);
   const redoStackRef = useRef<AnalysisSnapshot[]>([]);
@@ -266,6 +267,7 @@ export const DeckGLHeatmap = ({
     // Keep only the existing in-memory reference.
     // Do NOT deep-copy the matrix.
     filteredData: filteredData.current,
+    commandHistory: [...commandHistory]
   });
 
   const saveUndoPoint = () => {
@@ -320,6 +322,7 @@ export const DeckGLHeatmap = ({
     filteredData.current = snapshot.filteredData;
 
     // Force the worker to render the restored dataset/state.
+    setCommandHistory([...snapshot.commandHistory]);
     setDataVersion(prev => prev + 1);
   };
 
@@ -534,6 +537,29 @@ export const DeckGLHeatmap = ({
         // });
         setCommandHistory((prev) => [...prev, message]);
         return { success: true, message: "Pathway search completed" };
+      }
+
+      // ✅ Save one undo snapshot before any successful AI action
+      // that changes the heatmap or analysis state
+      const heatmapChangingActions = new Set([
+        "search",
+        "sort",
+        "cluster",
+        "sort_by_meta",
+        "sort_by_expression",
+        "set_opacity",
+        "set_linkage",
+        "set_distance",
+        "set_clustering"
+      ]);
+
+      const aiChangesHeatmap =
+        Boolean(clustering_result) ||
+        Boolean(updated_filters) ||
+        heatmapChangingActions.has(action);
+
+      if (aiChangesHeatmap) {
+        saveUndoPoint();
       }
 
       // ✅ STEP 2: Check if the backend sent a new data payload
@@ -2441,6 +2467,7 @@ export const DeckGLHeatmap = ({
           onSliderInteractionStart={saveUndoPoint}
           matrixOrientation={matrixOrientation}
           setMatrixOrientation={setMatrixOrientationWithHistory}
+          onAnalysisChangeStart={saveUndoPoint}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}
@@ -2453,6 +2480,7 @@ export const DeckGLHeatmap = ({
           ) => (
             <ChatBox
               onSendMessage={(message: string) => handleOllamaSendClick(message)}
+              commandHistory={commandHistory}
               rotatingGifUrl={rotatingGifUrl}
               placeholder="Chat with AI Assistant"
               showSuggestions={true}
