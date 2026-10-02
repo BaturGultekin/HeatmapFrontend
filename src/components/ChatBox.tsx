@@ -21,6 +21,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => Promise<{ success: boolean; message: string }>;
+  commandHistory?: string[];
   rotatingGifUrl?: string;
   placeholder?: string;
   showSuggestions?: boolean;
@@ -63,7 +64,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
   onExternalCommandHandled,
   backgroundColor = 'transparent',
   colMetadataValues = {},
-  rowMetadataValues = {}
+  rowMetadataValues = {},
+  commandHistory = []
 }) => {
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuggestionsPanel, setShowSuggestionsPanel] = useState<boolean>(false);
@@ -77,6 +79,20 @@ const ChatBox: React.FC<ChatInputProps> = ({
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const suppressNextFocusSuggestionsRef = useRef(false);
+
+  useEffect(() => {
+    const historyMessages: ChatMessage[] = commandHistory
+      .slice(-10)
+      .reverse()
+      .map((text, index) => ({
+        id: `history-${commandHistory.length - 1 - index}`,
+        text,
+        timestamp: new Date(),
+        status: 'success' as const
+      }));
+
+    setRecentMessages(historyMessages);
+  }, [commandHistory]);
 
   // Click outside to close suggestions
   useEffect(() => {

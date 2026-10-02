@@ -302,6 +302,7 @@ export default function PersistentDrawerLeft({
   colClusterValue,
   opacityValue,
   pvalThreshold,
+  onAnalysisChangeStart,
   onSliderInteractionStart,
   matrixOrientation,
   setMatrixOrientation,
@@ -348,6 +349,7 @@ export default function PersistentDrawerLeft({
   opacityValue: number;
   pvalThreshold: number;
   onSliderInteractionStart: () => void;
+  onAnalysisChangeStart: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -465,24 +467,45 @@ export default function PersistentDrawerLeft({
   // };
   const handleRowItemClick = (index: number) => {
     const actionType = orderArray[index];
+
+    const willChange =
+      order.row !== actionType ||
+      order.sortByRowCat !== "" ||
+      order.sortColsByRowName !== null;
+
+    if (!willChange) return;
+
+    // Save state BEFORE changing the heatmap
+    onAnalysisChangeStart();
+
     if (actionType === 'cluster') {
       notifyClusteringStarted();
     } else {
       notifySortStarted(actionType, 'rows');
     }
 
-    // 2. ✅ Then, set the order to begin the work (your existing logic)
     setSelectedRowIndex(index);
+
     setOrder((prevOrder: any) => ({
       ...prevOrder,
       row: actionType,
       sortByRowCat: "",
-      sortColsByRowName: null  // Clear gene-based column sorting when changing row sort
+      sortColsByRowName: null
     }));
   };
 
   const handleColItemClick = (index: number) => {
     const actionType = orderArray[index];
+
+    const willChange =
+      order.col !== actionType ||
+      order.sortByColCat !== "" ||
+      order.sortColsByRowName !== null;
+
+    if (!willChange) return;
+
+    // Save state BEFORE changing the heatmap
+    onAnalysisChangeStart();
 
     if (actionType === 'cluster') {
       notifyClusteringStarted();
@@ -490,9 +513,19 @@ export default function PersistentDrawerLeft({
       notifySortStarted(actionType, 'columns');
     }
 
-    // 2. ✅ Then, set the order to begin the work (your existing logic)
     setSelectedColIndex(index);
-    setOrder((prevOrder: any) => ({ ...prevOrder, col: actionType, sortByColCat: "", sortColsByRowName: null }));
+
+    setOrder((prevOrder: any) => ({
+      ...prevOrder,
+      col: actionType,
+      sortByColCat: "",
+      sortColsByRowName: null
+    }));
+  };
+
+  const setOrderWithUndo: React.Dispatch<React.SetStateAction<any>> = (update) => {
+    onAnalysisChangeStart();
+    setOrder(update);
   };
 
   useEffect(() => {
@@ -992,12 +1025,12 @@ export default function PersistentDrawerLeft({
 
         {colCategorynames.length > 0 &&
           <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <MultiSelect elements={colCategorynames} order={order} setOrder={setOrder} axis='col' />
+            <MultiSelect elements={colCategorynames} order={order} setOrder={setOrderWithUndo} axis='col' />
           </div>}
 
         {rowCategorynames.length > 0 &&
           <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrder} axis='row' />
+            <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrderWithUndo} axis='row' />
           </div>}
 
         {chatContent && (
@@ -1072,6 +1105,71 @@ export default function PersistentDrawerLeft({
                   Back to controls
                 </span>
               </Box>
+            )}
+
+            {isAIExpanded && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '6px',
+                  marginLeft: '10px',
+                  marginRight: '10px',
+                  //marginTop: '10px',
+                  marginBottom: '6px'
+                }}
+              >
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  disabled={!canUndo}
+                  onClick={onUndo}
+                  sx={{
+                    ...sidebarControlText,
+                    height: '32px',
+                    color: SIDEBAR_COLORS.primary,
+                    borderColor: SIDEBAR_COLORS.border,
+
+                    '&:hover': {
+                      borderColor: SIDEBAR_COLORS.primary,
+                      backgroundColor: '#e3f2fd',
+                    },
+
+                    '&.Mui-disabled': {
+                      color: SIDEBAR_COLORS.disabled,
+                      borderColor: '#e0e0e0',
+                    },
+                  }}
+                >
+                  Undo ↺
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  disabled={!canRedo}
+                  onClick={onRedo}
+                  sx={{
+                    ...sidebarControlText,
+                    height: '32px',
+                    color: SIDEBAR_COLORS.primary,
+                    borderColor: SIDEBAR_COLORS.border,
+
+                    '&:hover': {
+                      borderColor: SIDEBAR_COLORS.primary,
+                      backgroundColor: '#e3f2fd',
+                    },
+
+                    '&.Mui-disabled': {
+                      color: SIDEBAR_COLORS.disabled,
+                      borderColor: '#e0e0e0',
+                    },
+                  }}
+                >
+                  Redo ↻
+                </Button>
+              </div>
             )}
 
             {/* ChatBox section */}

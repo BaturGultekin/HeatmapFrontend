@@ -29,7 +29,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
     } else {
       setSelectedOptions(order.rowCat);
     }
-  }, [axis]);
+  }, [axis, order.colCat, order.rowCat]);
 
   return (
     <Autocomplete
