@@ -4,6 +4,21 @@ FROM node:18-alpine AS build
 # Set working directory
 WORKDIR /app
 
+# Native build dependencies required by canvas on Alpine
+RUN apk add --no-cache \
+    python3 \
+    py3-setuptools \
+    make \
+    g++ \
+    pkgconf \
+    cairo-dev \
+    pango-dev \
+    pixman-dev \
+    freetype-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev
+
 # Copy package files
 COPY package*.json ./
 
