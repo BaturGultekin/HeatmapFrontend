@@ -51,15 +51,10 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ghcr.io/gumuslab/clusterchirp:${{ inputs.tag }}
-
-      - name: Build and push published release
+          
+      - name: Promote tested release image to latest
         if: github.event_name == 'release'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          platforms: linux/amd64
-          tags: |
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/gumuslab/clusterchirp:latest \
             ghcr.io/gumuslab/clusterchirp:${{ github.event.release.tag_name }}
-            ghcr.io/gumuslab/clusterchirp:latest
