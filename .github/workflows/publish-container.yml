@@ -4,9 +4,12 @@ on:
   release:
     types: [published]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: gumuslab/clusterchirp
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and test'
+        required: true
+        default: 'v1.1.0'
 
 jobs:
   build-and-push:
@@ -17,7 +20,14 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout release tag
+      - name: Checkout manually selected tag
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Checkout published release tag
+        if: github.event_name == 'release'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
@@ -32,7 +42,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ClusterChirp
+      - name: Build and push test image
+        if: github.event_name == 'workflow_dispatch'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/gumuslab/clusterchirp:${{ inputs.tag }}
+
+      - name: Build and push published release
+        if: github.event_name == 'release'
         uses: docker/build-push-action@v6
         with:
           context: .
