@@ -6,3 +6,24 @@ index fe5caa4..660cb8e 100644
 -import{useLayoutFactory as t,useWorkerLayoutFactory as o,WorkerLayoutControl as r}from"@react-sigma/layout-core";import a from"graphology-layout-forceatlas2";import e from"graphology-layout-forceatlas2/worker";import l from"react";function s(o={iterations:100}){return t(a,o)}function n(t={}){return o(e,t)}const c=({id:t,className:o,style:a,settings:e={},autoRunFor:s,children:c,labels:i})=>{const u={id:t,className:o,style:a,autoRunFor:s,labels:i,layout:n(e)};return l.createElement(r,Object.assign({},u),c)};export{c as LayoutForceAtlas2Control,s as useLayoutForceAtlas2,n as useWorkerLayoutForceAtlas2};
 +import{useLayoutFactory as t,useWorkerLayoutFactory as o,WorkerLayoutControl as r}from"@react-sigma/layout-core";import a from"graphology-layout-forceatlas2";import e from"graphology-layout-forceatlas2/worker.js";import l from"react";function s(o={iterations:100}){return t(a,o)}function n(t={}){return o(e,t)}const c=({id:t,className:o,style:a,settings:e={},autoRunFor:s,children:c,labels:i})=>{const u={id:t,className:o,style:a,autoRunFor:s,labels:i,layout:n(e)};return l.createElement(r,Object.assign({},u),c)};export{c as LayoutForceAtlas2Control,s as useLayoutForceAtlas2,n as useWorkerLayoutForceAtlas2};
  //# sourceMappingURL=react-sigma_layout-forceatlas2.esm.min.js.map
+diff --git a/node_modules/@react-sigma/layout-forceatlas2/lib/react-sigma_layout-forceatlas2.umd.min.js b/node_modules/@react-sigma/layout-forceatlas2/lib/react-sigma_layout-forceatlas2.umd.min.js
+index b2b8b36..dc99e6d 100644
+--- a/node_modules/@react-sigma/layout-forceatlas2/lib/react-sigma_layout-forceatlas2.umd.min.js
++++ b/node_modules/@react-sigma/layout-forceatlas2/lib/react-sigma_layout-forceatlas2.umd.min.js
+@@ -1,2 +1,2 @@
+-!function(e,o){"object"==typeof exports&&"undefined"!=typeof module?o(exports,require("@react-sigma/layout-core"),require("graphology-layout-forceatlas2"),require("graphology-layout-forceatlas2/worker"),require("react")):"function"==typeof define&&define.amd?define(["exports","@react-sigma/layout-core","graphology-layout-forceatlas2","graphology-layout-forceatlas2/worker","react"],o):o((e="undefined"!=typeof globalThis?globalThis:e||self)["@react-sigma/layout-forceatlas2"]={},e.layoutCore,e.forceAtlas2,e.FA2Layout,e.React)}(this,(function(e,o,t,a,r){"use strict";function l(e={}){return o.useWorkerLayoutFactory(a,e)}e.LayoutForceAtlas2Control=({id:e,className:t,style:a,settings:u={},autoRunFor:s,children:c,labels:n})=>{const i={id:e,className:t,style:a,autoRunFor:s,labels:n,layout:l(u)};return r.createElement(o.WorkerLayoutControl,Object.assign({},i),c)},e.useLayoutForceAtlas2=function(e={iterations:100}){return o.useLayoutFactory(t,e)},e.useWorkerLayoutForceAtlas2=l}));
++!function(e,o){"object"==typeof exports&&"undefined"!=typeof module?o(exports,require("@react-sigma/layout-core"),require("graphology-layout-forceatlas2"),require("graphology-layout-forceatlas2/worker.js"),require("react")):"function"==typeof define&&define.amd?define(["exports","@react-sigma/layout-core","graphology-layout-forceatlas2","graphology-layout-forceatlas2/worker.js","react"],o):o((e="undefined"!=typeof globalThis?globalThis:e||self)["@react-sigma/layout-forceatlas2"]={},e.layoutCore,e.forceAtlas2,e.FA2Layout,e.React)}(this,(function(e,o,t,a,r){"use strict";function l(e={}){return o.useWorkerLayoutFactory(a,e)}e.LayoutForceAtlas2Control=({id:e,className:t,style:a,settings:u={},autoRunFor:s,children:c,labels:n})=>{const i={id:e,className:t,style:a,autoRunFor:s,labels:n,layout:l(u)};return r.createElement(o.WorkerLayoutControl,Object.assign({},i),c)},e.useLayoutForceAtlas2=function(e={iterations:100}){return o.useLayoutFactory(t,e)},e.useWorkerLayoutForceAtlas2=l}));
+ //# sourceMappingURL=react-sigma_layout-forceatlas2.umd.min.js.map
+diff --git a/node_modules/@react-sigma/layout-forceatlas2/lib/useWorkerLayoutForceAtlas2.js b/node_modules/@react-sigma/layout-forceatlas2/lib/useWorkerLayoutForceAtlas2.js
+index 32066ac..ec400a3 100644
+--- a/node_modules/@react-sigma/layout-forceatlas2/lib/useWorkerLayoutForceAtlas2.js
++++ b/node_modules/@react-sigma/layout-forceatlas2/lib/useWorkerLayoutForceAtlas2.js
+@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.useWorkerLayoutForceAtlas2 = useWorkerLayoutForceAtlas2;
+ const tslib_1 = require("tslib");
+ const layout_core_1 = require("@react-sigma/layout-core");
+-const worker_1 = tslib_1.__importDefault(require("graphology-layout-forceatlas2/worker"));
++const worker_1 = tslib_1.__importDefault(require("graphology-layout-forceatlas2/worker.js"));
+ /**
+  * React hook that helps you to manage worker of [force atlas2 layout](https://graphology.github.io/standard-library/layout-forceatlas2.html).
+  *
