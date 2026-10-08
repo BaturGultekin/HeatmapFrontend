@@ -13,6 +13,7 @@ export type LegendProps = {
   legendWidth?: number | string;
   fontSize?: number | string;
   unit?: string;
+  compactHorizontal?: boolean;
 };
 
 const Legend2 = ({
@@ -24,7 +25,70 @@ const Legend2 = ({
   legendHeight = LEGEND_HEIGHT,
   fontSize = LEGEND_FONT_SIZE,
   unit,
+  compactHorizontal = false,
 }: LegendProps) => {
+
+  if (compactHorizontal) {
+    return (
+      <div
+        style={{
+          width: legendWidth ?? LEGEND_WIDTH,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontFamily: 'Arial, sans-serif',
+          fontSize,
+        }}
+      >
+        {/* Min value */}
+        <span
+          style={{
+            minWidth: '30px',
+            textAlign: 'right',
+            lineHeight: 1,
+            color: '#555',
+          }}
+        >
+          {min.toFixed(1)}
+        </span>
+
+        {/* Gradient */}
+        <div
+          style={{
+            flex: 1,
+            height: '10px',
+            backgroundImage: `linear-gradient(
+            to left,
+            ${max > 0 ? `${maxColor}, ` : ''}
+            white
+            ${min < 0 ? `, ${minColor}` : ''}
+          )`,
+            borderRadius: '6px',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'Arial, sans-serif',
+            fontSize,
+          }}
+        >
+          {unit}
+        </div>
+
+        {/* Max value */}
+        <span
+          style={{
+            minWidth: '30px',
+            textAlign: 'left',
+            lineHeight: 1,
+            color: '#555',
+          }}
+        >
+          {max.toFixed(1)}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div

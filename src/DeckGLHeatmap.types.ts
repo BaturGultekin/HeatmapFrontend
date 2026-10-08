@@ -45,7 +45,7 @@ export interface DeckGLHeatmapProps {
    */
 
   dataId: string;
-  
+
   container: HTMLDivElement;
   /**
    * title for row labels (replaced by the actual labels when zoomed in enough)
@@ -94,9 +94,9 @@ export interface DeckGLHeatmapProps {
   // };
 
   /* Prop used for transferring category data to heatmap*/
-  categories:{
-    row:{[key: string]: string};
-    col:{[key: string]: string};
+  categories: {
+    row: { [key: string]: string };
+    col: { [key: string]: string };
   }
 
   // ord:{
@@ -107,15 +107,15 @@ export interface DeckGLHeatmapProps {
   //   colCat:string[];
   //   sortByColCat:string
   // }
-  
+
   /* Parameter for setting the result table categories */
-  resultCategories?:string[]
+  resultCategories?: string[]
 
   /* Prop for setting the current result category */
-  setResultCategory?:React.Dispatch<React.SetStateAction<string>>;
+  setResultCategory?: React.Dispatch<React.SetStateAction<string>>;
 
   /* Prop for setting value scale for data whether to show raw value or normalized one*/
-  setValueScale?:React.Dispatch<React.SetStateAction<string>>;
+  setValueScale?: React.Dispatch<React.SetStateAction<string>>;
 
   /*Prop for setting the result  */
   valueScale?: string;
@@ -124,14 +124,14 @@ export interface DeckGLHeatmapProps {
   valueType?: string;
 
   /* Prop for setting the heatmap pannel width */
-  panelWidth:number;
+  panelWidth: number;
 
   /* Prop for current user session id */
-  sessionID:string;
+  sessionID: string;
 
-  onShowNetwork?:any; // ✅ Required nodes parameter
-  
-  onShowPathwayNetwork?:any;
+  onShowNetwork?: any; // ✅ Required nodes parameter
+
+  onShowPathwayNetwork?: any;
 
   notifyClusteringStarted: () => void;
   notifyClusteringSuccess: () => void;
@@ -139,14 +139,17 @@ export interface DeckGLHeatmapProps {
   notifySortStarted: (sortType, dimension) => void;
   notifySortSuccess: (sortType, dimension) => void;
 
-  showLoading:any;
-  hideLoading:any;
-  addNotification:any;
+  showLoading: any;
+  hideLoading: any;
+  addNotification: any;
 
   onStatsUpdate?: (stats: { sampleSize: number; dataPoints: number }) => void;
 
+  /* Optional content rendered at the top of the left sidebar */
+  sidebarTopContent?: React.ReactNode;
+
   /*P vlaue json for results files */
-  pvalData?:Record<string, Record<string, number>>;
+  pvalData?: Record<string, Record<string, number>>;
 
   /** positioning of the chart, as in the `position` css style */
   position?: CSSProperties['position'];

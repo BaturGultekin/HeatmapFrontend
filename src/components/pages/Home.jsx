@@ -74,6 +74,90 @@ function Home() {
 
   };
 
+  const homepageSidebarContent = (
+    <Box
+      sx={{
+        padding: "8px 10px 6px",
+        borderBottom: "1px solid #e0e0e0",
+      }}
+    >
+      <input
+        type="file"
+        accept=".csv, .tsv, .xlsx, .json"
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+        id="file-upload"
+        disabled={isProcessing}
+      />
+
+      <Box
+        sx={{
+          display: "flex",
+          gap: "6px",
+          width: "100%",
+        }}
+      >
+        <label
+          htmlFor="file-upload"
+          style={{
+            flex: 1,
+            display: "block",
+          }}
+        >
+          <Button
+            variant="contained"
+            component="span"
+            fullWidth
+            disabled={isProcessing}
+            sx={{
+              height: "30px",
+              minWidth: 0,
+              padding: "2px 6px",
+              fontSize: "11px",
+              fontWeight: 600,
+              textTransform: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isProcessing ? "Processing..." : "Upload Data"}
+          </Button>
+        </label>
+
+        <Button
+          variant="outlined"
+          onClick={handleShowSampleData}
+          sx={{
+            flex: 1,
+            height: "30px",
+            minWidth: 0,
+            padding: "2px 6px",
+            fontSize: "11px",
+            fontWeight: 600,
+            textTransform: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Data Format
+        </Button>
+      </Box>
+
+      <Typography
+        sx={{
+          textAlign: "center",
+          fontSize: "9.5px",
+          lineHeight: 1.2,
+          color: "#777",
+          fontStyle: "italic",
+          marginTop: "5px",
+        }}
+      >
+        ClusterChirp is freely available for all users.
+        <br />
+        No registration required.
+      </Typography>
+    </Box>
+  );
+
   // defaultData = null
 
   // Your existing JSX for the Home component
@@ -94,29 +178,29 @@ function Home() {
           {/* Introduction Text */}
           <Typography
             sx={{
-              textAlign: "justify",
-              margin: "30px auto",
-              marginBottom: "10px",
-              marginTop: "-5px",
-              maxWidth: "99%",
+              textAlign: "center",
+              margin: 0,
+              padding: "8px 16px 6px",
+              width: "100%",
+              boxSizing: "border-box",
               lineHeight: "1.1",
               fontWeight: 'light',
               fontSize: '17.5px'
             }}
           >
-            <strong>Welcome to CluterChirp! </strong>
+            <strong>Welcome to ClusterChirp! </strong>
             Upload your data for on-the-fly clustering to uncover patterns and trends.
             Interact directly with the visualizations, explore your data using built-in AI Assistant!
             {/* <strong>Welcome to ClusterChirp!</strong>  Upload your data to perform on-the fly clustering and uncover patterns, trends, and anomalies. Interact directly with visualizations or explore using our built-in AI chatbot. Powerful analytics, intuitive interface. */}
           </Typography>
           <Box
             sx={{
-              height: "calc(100vh - 200px)",
+              flex: 1,
+              minHeight: 0,
               width: "100%",
               position: "relative",
               display: "flex",
               flexDirection: "column",
-              // ✅ Alternative: Use CSS custom properties
               overflow: "auto",
               "&": {
                 // ✅ Force scrollbar using CSS custom properties
@@ -139,72 +223,12 @@ function Home() {
           >
             <HeatmapWrapper
               data={defaultData}
-              // id="rnaSeq"
               id="defaultheatmap"
               fileSelectedFlag={false}
               homepage={true}
+              sidebarTopContent={homepageSidebarContent}
             />
           </Box>
-
-          {/* Upload & Try Demo Buttons */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "20px",
-              marginBottom: "2px",
-            }}
-          >
-
-            <input
-              type="file"
-              accept=".csv, .tsv, .xlsx, .json"
-              onChange={handleFileChange}
-              style={{ display: "none" }}
-              id="file-upload"
-              disabled={isProcessing}
-            />
-            <label htmlFor="file-upload">
-              <Button
-                variant="contained"
-                color="primary"
-                component="span"
-                disabled={isProcessing}
-                sx={{
-                  padding: "10px 20px",
-                  fontSize: "16px",
-                }}
-              >
-                {isProcessing ? "Processing..." : "Upload Data"}
-              </Button>
-            </label>
-
-            {/* Sample Data Button */}
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleShowSampleData}
-              sx={{
-                padding: "10px 20px",
-                fontSize: "16px",
-              }}
-            >
-              Data Format
-            </Button>
-          </Box>
-
-          {/* Free Access Statement - Required for NAR Web Server Issue */}
-          <Typography
-            sx={{
-              textAlign: "center",
-              margin: "5px auto",
-              fontSize: "14px",
-              color: "#666",
-              fontStyle: "italic"
-            }}
-          >
-            ClusterChirp is freely available for all users. No registration required.
-          </Typography>
         </div>
 
         <div className="extraSpace">

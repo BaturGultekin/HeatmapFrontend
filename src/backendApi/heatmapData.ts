@@ -9,8 +9,8 @@ declare global {
 
 export const processHeatmapData = async (data: File): Promise<any> => {
 
-//   console.log('********* data is *******',data)
-   // Use FileReader to read the content as text
+  //   console.log('********* data is *******',data)
+  // Use FileReader to read the content as text
 
   const formData = new FormData();
   formData.append('data', data);
@@ -19,7 +19,7 @@ export const processHeatmapData = async (data: File): Promise<any> => {
     // 🕵️ DETECT IF BROWSER IS MAKING MULTIPLE CALLS
     const fileKey = `${data.name}_${data.size}`;
     if (!window.uploadTracker) window.uploadTracker = {};
-    
+
     if (window.uploadTracker[fileKey]) {
       const lastUpload = window.uploadTracker[fileKey];
       const timeSince = Date.now() - lastUpload.timestamp;
@@ -31,12 +31,12 @@ export const processHeatmapData = async (data: File): Promise<any> => {
         currentTimestamp: new Date().toISOString()
       });
     }
-    
+
     window.uploadTracker[fileKey] = { timestamp: Date.now() };
-    
+
     console.log('***** sending data to backend ******')
     const response = await post<any>('api/heatmapdata/process/', formData);
-    console.log('***** response from backend ******',response)
+    console.log('***** response from backend ******', response)
     return response;
   } catch (error) {
     console.error('Error processing heatmap data:', error);
@@ -44,6 +44,30 @@ export const processHeatmapData = async (data: File): Promise<any> => {
   }
 };
 
+export const createDemoSession = async (): Promise<any> => {
+  try {
+    console.log('🏠 Creating homepage demo session...');
+
+    const response = await post<any>(
+      'api/heatmapdata/create-demo-session/',
+      {}
+    );
+
+    console.log(
+      '🏠 Homepage demo session created:',
+      response.session_id
+    );
+
+    return response;
+  } catch (error) {
+    console.error(
+      'Error creating homepage demo session:',
+      error
+    );
+
+    throw error;
+  }
+};
 
 /**
  * Process heatmap data with a specific imputation strategy after missing value analysis.
@@ -55,15 +79,15 @@ export const processHeatmapData = async (data: File): Promise<any> => {
  * @returns Promise with the final processed heatmap data and clustering results
  */
 export const processWithStrategy = async (
-  sessionId: string, 
-  strategy: string, 
+  sessionId: string,
+  strategy: string,
   parameters?: any,
 ): Promise<any> => {
   try {
     const formData = new FormData();
     formData.append('session_id', sessionId);
     formData.append('imputation_strategy', strategy);
-    
+
     if (parameters) {
       formData.append('strategy_parameters', JSON.stringify(parameters));
     }
@@ -86,7 +110,7 @@ export const processWithStrategy = async (
  */
 export const cleanupSession = async (sessionId: string): Promise<void> => {
   const data = { session_id: sessionId };
-  
+
   try {
     await post<any>('api/heatmapdata/cleanup/', data);
     console.log(`🗑️ Session ${sessionId} cleaned up successfully.`);
@@ -106,7 +130,7 @@ export const cleanupSession = async (sessionId: string): Promise<void> => {
  * @returns Promise with the processed data and command interpretation
  */
 export const processHeatmapCommand = async (
-  sessionId: string, 
+  sessionId: string,
   command: string,
   currentState?: {
     filters?: Record<string, any>; // Current applied filters
@@ -114,6 +138,10 @@ export const processHeatmapCommand = async (
     clustering?: Record<string, any>; // Current clustering parameters
     visualParams?: Record<string, any>; // Current visualization parameters
     commandHistory?: string[]; // Optional: history of previous commands for context
+    transformation?: {
+      reZscore: boolean;
+      axis: 'row' | 'col';
+    };
   }
 ): Promise<any> => {
   try {
@@ -125,10 +153,14 @@ export const processHeatmapCommand = async (
         selections: {},
         clustering: {},
         visualParams: {},
-        commandHistory: []
+        commandHistory: [],
+        transformation: {
+          reZscore: false,
+          axis: 'row'
+        }
       }
     };
-    
+
     const response = await post<any>('api/heatmapdata/command/', requestData);
     console.log(`🤖 Command processed: "${command}"`);
     return response;
@@ -149,7 +181,7 @@ export const processHeatmapCommand = async (
 export const getCorrelationNetwork = async (
   sessionId: string,
   nodes: string[],
-  filters?:any
+  filters?: any
 ): Promise<any> => {
   try {
     const requestData = {
@@ -163,7 +195,7 @@ export const getCorrelationNetwork = async (
         geneFilters: {}
       }
     };
-    
+
     const response = await post<any>('api/heatmapdata/network-correlation/', requestData);
     console.log(`🌐 Network correlation data retrieved for ${nodes.length} nodes`);
     return response;
@@ -181,9 +213,17 @@ export const getCorrelationNetwork = async (
  * @param filters Object containing filters to select specific samples or genes
  * @returns Promise with the correlation network data
  */
+
 export const getRefreshHeatmap = async (
   sessionId: string,
-  filters?:any
+  filters?: any,
+  transformation: {
+    reZscore: boolean;
+    axis: 'row' | 'col';
+  } = {
+      reZscore: false,
+      axis: 'row'
+    }
 ): Promise<any> => {
   try {
     const requestData = {
@@ -194,29 +234,34 @@ export const getRefreshHeatmap = async (
         genes: [],
         sampleFilters: {},
         geneFilters: {}
-      }
+      },
+      transformation: transformation
     };
-    
-    const response = await post<any>('api/heatmapdata/refresh-heatmap/', requestData);
+
+    const response = await post<any>(
+      'api/heatmapdata/refresh-heatmap/',
+      requestData
+    );
+
     return response;
   } catch (error) {
-    console.error('Error getting correlation network data:', error);
+    console.error('Error refreshing heatmap data:', error);
     throw error;
   }
 };
 
 /**
  * Load example dataset that's already processed and stored on the server
- * 
+ *
  * @param exampleId The ID of the example dataset (gene-expression, proteomics, immunogenomics)
  * @returns Promise with the processed example data ready for heatmap
  */
 export const loadExampleData = async (exampleId: string): Promise<any> => {
   try {
-    const requestData = { 
+    const requestData = {
       example_id: exampleId
     };
-    
+
     const response = await post<any>('api/heatmapdata/examples/load/', requestData);
     console.log(`📊 Example data loaded: ${exampleId}`);
     return response;
@@ -260,7 +305,7 @@ export const getEnrichmentData = async (
 export const get3DCoords = async (sessionId: string): Promise<any> => {
   try {
     // Assuming your backend endpoint is /api/get_3d_coords/<session_id>
-    const response = await get<any>(`api/heatmapdata/get_3d_coords/${sessionId}`); 
+    const response = await get<any>(`api/heatmapdata/get_3d_coords/${sessionId}`);
     console.log(`🌐 3D coordinates status received for session ${sessionId}:`, response.status);
     return response;
   } catch (error) {

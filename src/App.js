@@ -36,19 +36,20 @@ function App() {
 
       <PageTracker />
       <Routes>
-        <Route path='/' element={<Layout/>}>
-          <Route index element={<Home/>}/>
-          <Route path='example' element={<Examples/>}/>
-          <Route path='about' element={<About/>}/>
-          <Route path='contact' element={<Contact/>}/>
+        <Route path='/' element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path='example' element={<Examples />} />
+          <Route path='about' element={<About />} />
+          <Route path='contact' element={<Contact />} />
           <Route path="/example/:exampleId" element={<ExampleHeatmapPage />} />
 
+          {/* v1.2.0: uploaded heatmaps use the shared application header */}
+          <Route path='heatmap' element={<HeatmapPage />} />
         </Route>
-        {/* HeatmapPage is outside the Layout so it has its own full page layout */}
-        <Route path='heatmap' element={<HeatmapPage/>}/>
-        <Route path="/sample-data" element={<SampleData />}/> 
-        <Route path='network-visualization' element={<NetworkVisualizationPage/>}/>
-      
+
+        <Route path="/sample-data" element={<SampleData />} />
+        <Route path='network-visualization' element={<NetworkVisualizationPage />} />
+
       </Routes>
     </Router>
   );

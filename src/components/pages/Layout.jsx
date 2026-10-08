@@ -52,6 +52,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import ArticleIcon from "@mui/icons-material/Article";
 import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
 import sinaiLogo from './sinai_logo.png';
+import bioRxivLogo from './biorxiv_logo.png';
 import { Margin } from "@mui/icons-material";
 
 function Layout() {
@@ -94,6 +95,21 @@ function Layout() {
 
           {/* <Link to="/example" className={`nav-link ${location.pathname === "/example" ? "active" : ""}`}>Examples</Link> */}
           <Link to="/contact" className={`nav-link ${location.pathname === "/contact" ? "active" : ""}`}>Contact</Link>
+
+          <a
+            href="https://arxiv.org/abs/2602.08280"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-biorxiv-link"
+            aria-label="View ClusterChirp preprint"
+            title="View preprint"
+          >
+            <img
+              src={bioRxivLogo}
+              alt="bioRxiv"
+              className="nav-biorxiv-logo"
+            />
+          </a>
         </nav>
 
 

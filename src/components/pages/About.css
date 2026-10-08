@@ -7,7 +7,8 @@
 }
 
 .extraSpace {
-    width: 10rem; /* Matches the spacing in Home.jsx */
+    width: 10rem;
+    /* Matches the spacing in Home.jsx */
     height: 100%;
     display: flex;
     align-items: flex-end;
@@ -30,32 +31,39 @@ img {
     position: absolute;
     top: -35px;
     left: -20px;
-    width: 200px; /* Small size */
-    height: auto; /* Maintain aspect ratio */
-    mix-blend-mode: multiply; /* Try multiply, overlay, or screen */
+    width: 200px;
+    /* Small size */
+    height: auto;
+    /* Maintain aspect ratio */
+    mix-blend-mode: multiply;
+    /* Try multiply, overlay, or screen */
 }
 
 .circleText {
     position: absolute;
     top: 20px;
     left: 10px;
-    height: auto; /* Maintain aspect ratio */
+    height: auto;
+    /* Maintain aspect ratio */
 }
 
 .circleText {
     font-family: 'Playfair Display', serif;
-    font-size: 22px;  /* Adjust size as desired */
+    font-size: 22px;
+    /* Adjust size as desired */
     margin: 0;
     padding: 0;
     text-align: center;
-  }
-  
-  .circleText-cluster {
+}
+
+.circleText-cluster {
     color: purple;
-    font-weight: 600; /* Bold if desired */
-  }
-  
-  .circleText-chirp {
+    font-weight: 600;
+    /* Bold if desired */
+}
+
+.circleText-chirp {
     color: blue;
-    font-weight: 600; /* Bold if desired */
-  }
+    font-weight: 600;
+    /* Bold if desired */
+}

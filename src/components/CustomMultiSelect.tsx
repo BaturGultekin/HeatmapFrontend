@@ -40,7 +40,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
 
         '& .MuiAutocomplete-inputRoot': {
           flexWrap: 'wrap',
-          padding: '4px 4px 4px 4px !important',
+          padding: '8px 4px 4px 4px !important',
           minHeight: '42px',
           columnGap: '2px',
           rowGap: '1px',
@@ -100,7 +100,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
         '& .MuiInputLabel-root': {
           color: CONTROL_COLORS.text,
           fontFamily: 'Arial, sans-serif',
-          fontSize: '13px',
+          fontSize: '16px',
         },
 
         '& .MuiInputLabel-root.Mui-focused': {
