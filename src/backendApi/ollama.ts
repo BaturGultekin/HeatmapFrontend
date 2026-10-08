@@ -1,5 +1,5 @@
 import axios from 'axios';
-import {processHeatmapCommand} from "./heatmapData"
+import { processHeatmapCommand } from "./heatmapData"
 
 const OLLAMA_HOST = 'http://10.95.46.94:53880/';
 const MODEL_NAME = 'tinyllama:latest';
@@ -29,9 +29,9 @@ export interface PathwayResult {
     gene_count: number;
     library: string;
     match_reason: string;
-  }
-  
-  export interface HeatmapResponse {
+}
+
+export interface HeatmapResponse {
     action?: string;
     target?: string;
     value?: string;
@@ -41,9 +41,9 @@ export interface PathwayResult {
     distance?: string;  // For set_clustering action
     linkage?: string;   // For set_clustering action
     error?: string;
-  }
-  
-  
+}
+
+
 // // Check if model exists
 // async function isModelAvailable(model: string): Promise<boolean> {
 //     try {
@@ -135,7 +135,14 @@ export async function queryOllama(
     userQuery: string,
     sessionId: string,
     filters: any,
-    commandHistory: string[] = []
+    commandHistory: string[] = [],
+    transformation: {
+        reZscore: boolean;
+        axis: 'row' | 'col';
+    } = {
+            reZscore: false,
+            axis: 'row'
+        }
 ): Promise<HeatmapResponse | { error: string }> {
     try {
         // Send the user query as a "command" to processHeatmapCommand API
@@ -144,7 +151,8 @@ export async function queryOllama(
             commandHistory,
             selections: {},
             clustering: {},
-            visualParams: {}
+            visualParams: {},
+            transformation
         });
 
         // Validate and parse response

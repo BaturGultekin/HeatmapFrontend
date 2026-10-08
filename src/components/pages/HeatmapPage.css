@@ -1,5 +1,9 @@
 .heatmap-page {
-  height: 100vh;
+  /*
+   * Main navbar is 64px.
+   * The uploaded-data workspace receives the rest of the viewport.
+   */
+  height: calc(100vh - 64px);
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -9,7 +13,7 @@
 
 @media (max-width: 768px) {
   .heatmap-page {
+    min-height: calc(100vh - 64px);
     height: auto;
-    min-height: 100vh;
   }
 }

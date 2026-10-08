@@ -145,7 +145,8 @@ export const DeckGLHeatmap = ({
   hideLoading,
   addNotification,
   pvalData,
-  onStatsUpdate
+  onStatsUpdate,
+  sidebarTopContent
 }: DeckGLHeatmapProps) => {
 
 
@@ -167,6 +168,18 @@ export const DeckGLHeatmap = ({
   const [OpacityValue, setOpacityValue] = useState(OPACITY);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [matrixOrientation, setMatrixOrientation] = useState('Original');
+  type ZScoreAxis = 'row' | 'col';
+
+  const [reZscoreFilteredSubset, setReZscoreFilteredSubset] =
+    useState(false);
+
+  const [reZscoreAxis, setReZscoreAxis] =
+    useState<ZScoreAxis>('row');
+
+  const transformation = {
+    reZscore: reZscoreFilteredSubset,
+    axis: reZscoreAxis
+  };
   const [order, setOrder] = useState({ row: "alphabetically", col: "alphabetically", rowCat: [] as string[], sortByRowCat: "", colCat: [] as string[], sortByColCat: "", sortColsByRowName: null as string | null });
   // const [order, setOrder] = useState();
   // const [catTemp, setCatTemp] = useState(categories);
@@ -433,7 +446,7 @@ export const DeckGLHeatmap = ({
     try {
       // Send the selected pathway back to the backend to get filtered data
       const filterMessage = `show genes from pathway: ${selectedPathway.name}`;
-      const res = await queryOllama(filterMessage, sessionID, filters, commandHistory);
+      const res = await queryOllama(filterMessage, sessionID, filters, commandHistory, transformation);
 
       hideLoading();
 
@@ -491,11 +504,17 @@ export const DeckGLHeatmap = ({
       throw new Error("Please enter a command");
     }
 
+    if (!sessionID) {
+      throw new Error(
+        "AI Assistant is still initializing for the example dataset. Please try again in a moment."
+      );
+    }
+
     // ✅ STEP 1: Show a loading bar for the AI interaction
     showLoading(`Sending command to AI Assistant...`);
 
     try {
-      const res = await queryOllama(message, sessionID, filters, commandHistory);
+      const res = await queryOllama(message, sessionID, filters, commandHistory, transformation);
       hideLoading(); // Hide loading bar as soon as AI responds
 
       console.log('***** res is as follows *******', res)
@@ -1072,9 +1091,15 @@ export const DeckGLHeatmap = ({
   }, [isCropping]);
 
   // ✅ Update the handleRenderHeatmap function to accept current filters
-  const handleRenderHeatmap = (currentFilters: any) => {
+  const handleRenderHeatmap = (
+    currentFilters: any,
+    transformationOverride?: {
+      reZscore: boolean;
+      axis: ZScoreAxis;
+    }
+  ) => {
     showLoading('Applying filters and re-rendering heatmap...');
-    // If there's an active crop, include the cropped row/column names in the filters
+
     let filtersWithCrop = { ...currentFilters };
 
     if (filteredIdxDict && dataStateRef.current) {
@@ -1105,7 +1130,13 @@ export const DeckGLHeatmap = ({
       };
     }
 
-    getRefreshHeatmap(sessionID, filtersWithCrop)
+    const activeTransformation =
+      transformationOverride ?? {
+        reZscore: reZscoreFilteredSubset,
+        axis: reZscoreAxis
+      };
+
+    getRefreshHeatmap(sessionID, filtersWithCrop, activeTransformation)
       .then((res) => {
         if ("error" in res) {
           console.error("Heatmap Error:", res.error);
@@ -1167,6 +1198,35 @@ export const DeckGLHeatmap = ({
       });
   };
 
+  const handleReZscoreToggle = (enabled: boolean) => {
+    setReZscoreFilteredSubset(enabled);
+
+    const hasActiveFilters =
+      (filters?.row?.length ?? 0) > 0 ||
+      (filters?.col?.length ?? 0) > 0;
+
+    if (hasActiveFilters) {
+      handleRenderHeatmap(filters, {
+        reZscore: enabled,
+        axis: reZscoreAxis
+      });
+    }
+  };
+
+  const handleReZscoreAxisChange = (axis: ZScoreAxis) => {
+    setReZscoreAxis(axis);
+
+    const hasActiveFilters =
+      (filters?.row?.length ?? 0) > 0 ||
+      (filters?.col?.length ?? 0) > 0;
+
+    if (reZscoreFilteredSubset && hasActiveFilters) {
+      handleRenderHeatmap(filters, {
+        reZscore: true,
+        axis
+      });
+    }
+  };
 
 
   // Add event listeners for mouse move and mouse up when drawing starts
@@ -1766,7 +1826,11 @@ export const DeckGLHeatmap = ({
     legendHeight={legend?.height}
     fontSize={legend?.fontSize}
     unit={unit}
+    compactHorizontal={true}
   />
+
+  const currentMatrixRows = dataStateRef.current?.numRows ?? 0;
+  const currentMatrixColumns = dataStateRef.current?.numColumns ?? 0;
 
   // onClick handler to download matrix as TSV file (using current dataState - what user sees)
   const downloadMatrix = () => {
@@ -2424,7 +2488,7 @@ export const DeckGLHeatmap = ({
       )}
       <div
         style={{
-          height: `${HEATMAP_PARENT_HEIGHT_RATIO}%`,
+          height: `100%`,
           width: `${HEATMAP_PARENT_WIDTH_RATIO}%`,
           display: 'flex',
           gap: '0px',
@@ -2437,7 +2501,7 @@ export const DeckGLHeatmap = ({
           categories={catTemporary}
           colMetadataValues={colMetadataValues}
           order={order}
-          Legend={legendComponent}
+          //Legend={legendComponent}
           panelWidth={panelWidth}
           ID={ID}
           dataState={dataStateRef.current}
@@ -2465,6 +2529,10 @@ export const DeckGLHeatmap = ({
           opacityValue={OpacityValue}
           pvalThreshold={pvalThreshold}
           onSliderInteractionStart={saveUndoPoint}
+          reZscoreFilteredSubset={reZscoreFilteredSubset}
+          reZscoreAxis={reZscoreAxis}
+          onReZscoreToggle={handleReZscoreToggle}
+          onReZscoreAxisChange={handleReZscoreAxisChange}
           matrixOrientation={matrixOrientation}
           setMatrixOrientation={setMatrixOrientationWithHistory}
           onAnalysisChangeStart={saveUndoPoint}
@@ -2472,6 +2540,7 @@ export const DeckGLHeatmap = ({
           onRedo={handleRedo}
           canUndo={canUndo}
           canRedo={canRedo}
+          sidebarTopContent={sidebarTopContent}
           chatContent={(
             onCommandRun,
             onSuggestionsClose,
@@ -2501,12 +2570,53 @@ export const DeckGLHeatmap = ({
             height: `${HEATMAP_HEIGHT}%`,
             width: `${HEATMAP_WIDTH}%`,  // Take 95% of the parent container's width
             overflow: 'visible',
+            position: 'relative',
             transform: `translateX(${isDrawerOpen ? `${0}px` : `${-panelWidth}px`})`,
             transition: 'transform 0.3s ease',
           }}
             ref={heatmapRef}
             onMouseDown={handleMouseDown}
           >
+
+            {/* Matrix information - v1.2.0 */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '4px',
+                left: `${rowLabelsWidth - 10}px`,
+                zIndex: 20,
+
+                width: legend?.width ?? 228,
+
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: '0px',
+
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '12.5px',
+                color: '#555',
+
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {/* Current matrix dimensions */}
+              <div
+                style={{
+                  width: '100%',
+                  textAlign: 'center',
+                  fontWeight: 500,
+                  lineHeight: 1.1,
+                }}
+              >
+                Matrix Size: {currentMatrixColumns} Columns × {currentMatrixRows} Rows
+              </div>
+
+              {/* Matrix value scale */}
+              {legendComponent}
+            </div>
+
             {deckGlInstance}
 
             {/* Aggregation indicator badge - shown when cells are being averaged, positioned at bottom right */}

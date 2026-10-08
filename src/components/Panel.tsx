@@ -5,7 +5,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import MenuIcon from '@mui/icons-material/Menu';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CropIcon from '@mui/icons-material/Crop';
-import { Tooltip, ToggleButton, ToggleButtonGroup, Button, Box } from '@mui/material';
+import { Tooltip, ToggleButton, ToggleButtonGroup, Button, Box, Switch } from '@mui/material';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
@@ -277,7 +277,7 @@ export default function PersistentDrawerLeft({
   categories,
   resultCategories,
   order,
-  Legend,
+  // Legend,
   panelWidth,
   ID,
   dataState,
@@ -306,11 +306,16 @@ export default function PersistentDrawerLeft({
   onSliderInteractionStart,
   matrixOrientation,
   setMatrixOrientation,
+  reZscoreFilteredSubset,
+  reZscoreAxis,
+  onReZscoreToggle,
+  onReZscoreAxisChange,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
   chatContent,
+  sidebarTopContent,
   colMetadataValues = {}
 }: {
   parentContainerRef: HTMLDivElement;
@@ -321,7 +326,7 @@ export default function PersistentDrawerLeft({
   categories: { row: {}; col: {}; };
   resultCategories?: string[];
   order: order;
-  Legend: React.ReactElement;
+  // Legend: React.ReactElement;
   panelWidth: number;
   ID: string;
   dataState: DataStateShape | null;
@@ -349,6 +354,10 @@ export default function PersistentDrawerLeft({
   opacityValue: number;
   pvalThreshold: number;
   onSliderInteractionStart: () => void;
+  reZscoreFilteredSubset: boolean;
+  reZscoreAxis: 'row' | 'col';
+  onReZscoreToggle: (enabled: boolean) => void;
+  onReZscoreAxisChange: (axis: 'row' | 'col') => void;
   onAnalysisChangeStart: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -359,19 +368,34 @@ export default function PersistentDrawerLeft({
     onSuggestionsClose: () => void,
     externalCommand: string | null,
     onExternalCommandHandled: () => void
-  ) => React.ReactNode; colMetadataValues?: Record<string, string[]>;
+  ) => React.ReactNode;
+  colMetadataValues?: Record<string, string[]>;
+  sidebarTopContent?: React.ReactNode;
 }) {
   const [isDrawerOpen, setDrawerOpen] = useState(true);
   const [isAIExpanded, setIsAIExpanded] = useState(false);
   const [isMetadataGuideOpen, setIsMetadataGuideOpen] = useState(false);
   const [pendingGuideCommand, setPendingGuideCommand] = useState<string | null>(null);
   const aiPanelRef = React.useRef<HTMLDivElement>(null);
+
+  /* Keep drawer independent from heatmap height */
+  const drawerHostRef = React.useRef<HTMLDivElement>(null);
+  const [drawerTop, setDrawerTop] = useState(0);
+
   const theme = useTheme();
   // const [selectedRowIndex, setSelectedRowIndex] = useState(0)
   const [selectedRowIndex, setSelectedRowIndex] = useState(ORDER_INDEX[order["row"]]);
   const [selectedColIndex, setSelectedColIndex] = useState(ORDER_INDEX[order["col"]]);
 
+  const isTransposed = matrixOrientation === 'Transposed';
 
+  const displayedRowOrder = isTransposed
+    ? order.col
+    : order.row;
+
+  const displayedColOrder = isTransposed
+    ? order.row
+    : order.col;
 
   const rowlabels = useMemo(
     () => {
@@ -468,16 +492,6 @@ export default function PersistentDrawerLeft({
   const handleRowItemClick = (index: number) => {
     const actionType = orderArray[index];
 
-    const willChange =
-      order.row !== actionType ||
-      order.sortByRowCat !== "" ||
-      order.sortColsByRowName !== null;
-
-    if (!willChange) return;
-
-    // Save state BEFORE changing the heatmap
-    onAnalysisChangeStart();
-
     if (actionType === 'cluster') {
       notifyClusteringStarted();
     } else {
@@ -486,26 +500,27 @@ export default function PersistentDrawerLeft({
 
     setSelectedRowIndex(index);
 
-    setOrder((prevOrder: any) => ({
-      ...prevOrder,
-      row: actionType,
-      sortByRowCat: "",
-      sortColsByRowName: null
-    }));
+    setOrder((prevOrder: any) => {
+      if (isTransposed) {
+        return {
+          ...prevOrder,
+          col: actionType,
+          sortByColCat: "",
+          sortColsByRowName: null
+        };
+      }
+
+      return {
+        ...prevOrder,
+        row: actionType,
+        sortByRowCat: "",
+        sortColsByRowName: null
+      };
+    });
   };
 
   const handleColItemClick = (index: number) => {
     const actionType = orderArray[index];
-
-    const willChange =
-      order.col !== actionType ||
-      order.sortByColCat !== "" ||
-      order.sortColsByRowName !== null;
-
-    if (!willChange) return;
-
-    // Save state BEFORE changing the heatmap
-    onAnalysisChangeStart();
 
     if (actionType === 'cluster') {
       notifyClusteringStarted();
@@ -515,12 +530,23 @@ export default function PersistentDrawerLeft({
 
     setSelectedColIndex(index);
 
-    setOrder((prevOrder: any) => ({
-      ...prevOrder,
-      col: actionType,
-      sortByColCat: "",
-      sortColsByRowName: null
-    }));
+    setOrder((prevOrder: any) => {
+      if (isTransposed) {
+        return {
+          ...prevOrder,
+          row: actionType,
+          sortByRowCat: "",
+          sortColsByRowName: null
+        };
+      }
+
+      return {
+        ...prevOrder,
+        col: actionType,
+        sortByColCat: "",
+        sortColsByRowName: null
+      };
+    });
   };
 
   const setOrderWithUndo: React.Dispatch<React.SetStateAction<any>> = (update) => {
@@ -528,14 +554,37 @@ export default function PersistentDrawerLeft({
     setOrder(update);
   };
 
-  useEffect(() => {
-    const parentContainer = parentContainerRef;
-    const drawer = document.querySelector('.MuiDrawer-paper');
-    if (parentContainer && drawer instanceof HTMLElement) {
-      const parentContainerHeight = parentContainer.offsetHeight;
-      drawer.style.height = `${parentContainerHeight}px`;
-    }
-  }, [parentContainerRef]);
+  React.useLayoutEffect(() => {
+    const updateDrawerPosition = () => {
+      if (!drawerHostRef.current) return;
+
+      const hostTop =
+        drawerHostRef.current.getBoundingClientRect().top;
+
+      const header = document.querySelector('.header-grid');
+
+      const headerBottom =
+        header instanceof HTMLElement
+          ? header.getBoundingClientRect().bottom
+          : 0;
+
+      /*
+       * Initially: sidebar begins where it naturally sits.
+       * When page scrolls: keep it below the sticky navbar.
+       */
+      setDrawerTop(Math.max(headerBottom, hostTop));
+    };
+
+    updateDrawerPosition();
+
+    window.addEventListener('resize', updateDrawerPosition);
+    window.addEventListener('scroll', updateDrawerPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDrawerPosition);
+      window.removeEventListener('scroll', updateDrawerPosition, true);
+    };
+  }, []);
 
   // AI Assistant: collapse when clicking outside
   useEffect(() => {
@@ -575,7 +624,14 @@ export default function PersistentDrawerLeft({
     setIsDrawerOpen(false);
   };
   return (
-    <div style={{ width: drawerWidth, height: '100%', margin: '0px' }}>
+    <div
+      ref={drawerHostRef}
+      style={{
+        width: drawerWidth,
+        height: '100%',
+        margin: '0px'
+      }}
+    >
       <IconButton
         color="inherit"
         aria-label="open drawer"
@@ -598,9 +654,17 @@ export default function PersistentDrawerLeft({
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            top: 1,
+
+            position: 'fixed',
+            top: `${drawerTop}px`,
             left: 2,
-            position: 'absolute',
+
+            height: `calc(100vh - ${drawerTop}px)`,
+            maxHeight: `calc(100vh - ${drawerTop}px)`,
+
+            overflowY: 'auto',
+            overflowX: 'hidden',
+
             fontFamily: SIDEBAR_FONT,
             color: SIDEBAR_COLORS.text,
 
@@ -626,13 +690,16 @@ export default function PersistentDrawerLeft({
           },
           position: 'relative',
           height: '100%',
-          maxHeight: '100vh',
+          maxHeight: '100%',
+          alignSelf: 'stretch',
           zIndex: 1
         }}
         variant="persistent"
         anchor="left"
         open={isDrawerOpen}
       >
+        {sidebarTopContent}
+
         <DrawerHeader>
           <Tooltip
             title="Take snapshot"
@@ -732,64 +799,50 @@ export default function PersistentDrawerLeft({
             marginBottom: '6px'
           }}
         >
-
-          <ToggleButtonGroup
-            value={matrixOrientation}
-            exclusive
+          <ToggleButton
+            value="transpose"
+            selected={matrixOrientation === 'Transposed'}
             fullWidth
             size="small"
-            onChange={(_event, newOrientation) => {
-              if (newOrientation !== null) {
-                setMatrixOrientation(newOrientation);
-              }
+            onClick={() => {
+              setMatrixOrientation((prev) =>
+                prev === 'Transposed' ? 'Original' : 'Transposed'
+              );
             }}
             sx={{
+              ...sidebarControlText,
               height: '30px',
+              width: '100%',
 
-              '& .MuiToggleButton-root': {
-                ...sidebarControlText,
+              color: '#1976d2',
+              backgroundColor: '#ffffff',
+              borderColor: '#bdbdbd',
+              borderRadius: '6px',
 
+              transition:
+                'background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease',
+
+              '&:hover': {
+                backgroundColor: '#e3f2fd',
                 color: '#1976d2',
-                backgroundColor: '#ffffff',
-                borderColor: '#bdbdbd',
+                borderColor: '#64B5F6',
+              },
 
-                transition:
-                  'background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease',
+              '&.Mui-selected': {
+                backgroundColor: '#1976d2',
+                color: '#ffffff',
+                borderColor: '#1976d2',
 
                 '&:hover': {
-                  backgroundColor: '#e3f2fd',
-                  color: '#1976d2',
-                  borderColor: '#64B5F6'
-                },
-
-                '&.Mui-selected': {
-                  backgroundColor: '#1976d2',
+                  backgroundColor: '#1565c0',
                   color: '#ffffff',
-
-                  '&:hover': {
-                    backgroundColor: '#1565c0',
-                    color: '#ffffff',
-                  },
+                  borderColor: '#1565c0',
                 },
-              },
-
-              '& .MuiToggleButtonGroup-grouped:first-of-type': {
-                borderRadius: '6px 0 0 6px',
-              },
-
-              '& .MuiToggleButtonGroup-grouped:last-of-type': {
-                borderRadius: '0 6px 6px 0',
               },
             }}
           >
-            <ToggleButton value="Original">
-              Original
-            </ToggleButton>
-
-            <ToggleButton value="Transposed">
-              Transposed
-            </ToggleButton>
-          </ToggleButtonGroup>
+            Transpose
+          </ToggleButton>
         </div>
 
         <div
@@ -855,9 +908,20 @@ export default function PersistentDrawerLeft({
           </Button>
         </div>
 
+        {colCategorynames.length > 0 &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <MultiSelect elements={colCategorynames} order={order} setOrder={setOrderWithUndo} axis='col' />
+          </div>}
+
+        {rowCategorynames.length > 0 &&
+          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrderWithUndo} axis='row' />
+          </div>}
+
         <div
           style={{
             marginLeft: '10px',
+            marginTop: '4px',
             marginRight: '10px',
             display: 'flex',
             flexDirection: 'row',
@@ -885,7 +949,7 @@ export default function PersistentDrawerLeft({
             </h3>
 
             <ListComponent
-              selectedIndex={ORDER_INDEX[order["row"]]}
+              selectedIndex={ORDER_INDEX[displayedRowOrder]}
               handleItemClick={handleRowItemClick}
             />
           </div>
@@ -910,68 +974,85 @@ export default function PersistentDrawerLeft({
             </h3>
 
             <ListComponent
-              selectedIndex={ORDER_INDEX[order["col"]]}
+              selectedIndex={ORDER_INDEX[displayedColOrder]}
               handleItemClick={handleColItemClick}
             />
           </div>
         </div>
 
         {/* Cluster depth controls */}
-        {(order.row === 'cluster' || order.col === 'cluster') && (
-          <div
-            style={{
-              marginLeft: '10px',
-              marginRight: '10px',
-              marginTop: '1px',
-              marginBottom: '1px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}
-          >
+        {(displayedRowOrder === 'cluster' ||
+          displayedColOrder === 'cluster') && (
+            <div
+              style={{
+                marginLeft: '10px',
+                marginRight: '10px',
+                marginTop: '1px',
+                marginBottom: '1px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+            >
 
-            {order.row === 'cluster' && (
-              <div>
-                <div
-                  style={{
-                    ...sidebarSectionLabelStyle,
-                    marginBottom: '3px'
-                  }}
-                >
-                  Row Cluster Depth
+              {displayedRowOrder === 'cluster' && (
+                <div>
+                  <div
+                    style={{
+                      ...sidebarSectionLabelStyle,
+                      marginBottom: '3px'
+                    }}
+                  >
+                    Row Cluster Depth
+                  </div>
+
+                  <CustomSlider
+                    setClusterValue={
+                      isTransposed
+                        ? setColClusterValue
+                        : setRowClusterValue
+                    }
+                    clusterValue={
+                      isTransposed
+                        ? colClusterValue
+                        : rowClusterValue
+                    }
+                    onInteractionStart={onSliderInteractionStart}
+                  />
                 </div>
+              )}
 
-                <CustomSlider
-                  setClusterValue={setRowClusterValue}
-                  clusterValue={rowClusterValue}
-                  onInteractionStart={onSliderInteractionStart}
-                />
-              </div>
-            )}
+              {displayedColOrder === 'cluster' && (
+                <div>
+                  <div
+                    style={{
+                      ...sidebarSectionLabelStyle,
+                      marginBottom: '3px'
+                    }}
+                  >
+                    Column Cluster Depth
+                  </div>
 
-            {order.col === 'cluster' && (
-              <div>
-                <div
-                  style={{
-                    ...sidebarSectionLabelStyle,
-                    marginBottom: '3px'
-                  }}
-                >
-                  Column Cluster Depth
+                  <CustomSlider
+                    setClusterValue={
+                      isTransposed
+                        ? setRowClusterValue
+                        : setColClusterValue
+                    }
+                    clusterValue={
+                      isTransposed
+                        ? rowClusterValue
+                        : colClusterValue
+                    }
+                    onInteractionStart={onSliderInteractionStart}
+                  />
                 </div>
+              )}
 
-                <CustomSlider
-                  setClusterValue={setColClusterValue}
-                  clusterValue={colClusterValue}
-                  onInteractionStart={onSliderInteractionStart}
-                />
-              </div>
-            )}
-
-          </div>
-        )}
+            </div>
+          )}
         {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm} />}
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '4px', marginBottom: '-6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={sidebarSectionLabelStyle}>
             Opacity Slider
           </h3>
@@ -986,6 +1067,83 @@ export default function PersistentDrawerLeft({
             onInteractionStart={onSliderInteractionStart}
           />
           {/* <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true}/> */}
+        </div>
+
+        <div
+          style={{
+            marginLeft: '10px',
+            marginRight: '10px',
+            marginTop: '7px',
+            marginBottom: '5px'
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}
+          >
+            <h3
+              style={{
+                ...sidebarSectionLabelStyle,
+                margin: 0
+              }}
+            >
+              Re-z-score filtered subset
+            </h3>
+
+            <Switch
+              size="small"
+              checked={reZscoreFilteredSubset}
+              onChange={(e) =>
+                onReZscoreToggle(e.target.checked)
+              }
+            />
+          </div>
+
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            size="small"
+            value={reZscoreAxis}
+            disabled={!reZscoreFilteredSubset}
+            onChange={(_, value) => {
+              if (value !== null) {
+                onReZscoreAxisChange(value);
+              }
+            }}
+            sx={{
+              marginTop: '3px',
+              '& .MuiToggleButton-root': {
+                height: '27px',
+                minHeight: '27px',
+                padding: '2px 6px',
+                fontSize: '10.5px',
+                textTransform: 'none'
+              }
+            }}
+          >
+            <ToggleButton value="row">
+              By Row
+            </ToggleButton>
+
+            <ToggleButton value="col">
+              By Column
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <div
+            style={{
+              marginTop: '3px',
+              marginBottom: '-25px', //Need to check if this is the best way to do this
+              fontSize: '9px',
+              lineHeight: 1.2,
+              color: '#777'
+            }}
+          >
+            OFF preserves values from the original matrix.
+          </div>
         </div>
 
         {['olinkHeatmap', 'cytofHeatmap', 'serologyHeatmap', 'rnaseqHeatmap'].includes(ID) && setPvalThreshold &&
@@ -1007,14 +1165,14 @@ export default function PersistentDrawerLeft({
           </div>
         }
 
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        {/* <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={sidebarSectionLabelStyle}>
             Matrix Values Legend
           </h3>
         </div>
         <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '0px', marginBottom: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           {Legend}
-        </div>
+        </div> */}
 
         {/* 🆕 ADD FILTERS SECTION HERE */}
         <FiltersSection
@@ -1022,16 +1180,6 @@ export default function PersistentDrawerLeft({
           setFilters={setFilters}
           onRenderHeatmap={onRenderHeatmap}
         />
-
-        {colCategorynames.length > 0 &&
-          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <MultiSelect elements={colCategorynames} order={order} setOrder={setOrderWithUndo} axis='col' />
-          </div>}
-
-        {rowCategorynames.length > 0 &&
-          <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrderWithUndo} axis='row' />
-          </div>}
 
         {chatContent && (
           <div
@@ -1112,9 +1260,9 @@ export default function PersistentDrawerLeft({
                 style={{
                   display: 'flex',
                   gap: '6px',
-                  marginLeft: '10px',
-                  marginRight: '10px',
-                  //marginTop: '10px',
+                  marginLeft: '0px',
+                  marginRight: '0px',
+                  marginTop: '-6px',
                   marginBottom: '6px'
                 }}
               >

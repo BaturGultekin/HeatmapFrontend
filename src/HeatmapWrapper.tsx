@@ -4,7 +4,7 @@ import 'react-app-polyfill/ie11';
 import { DeckGLHeatmap } from './DeckGLHeatmap';
 import './wrapper.css';
 import { CircularProgress, Typography } from '@mui/material';
-import { getEnrichmentData, processHeatmapData, processWithStrategy, get3DCoords } from "./backendApi/heatmapData";
+import { getEnrichmentData, processHeatmapData, processWithStrategy, get3DCoords, createDemoSession } from "./backendApi/heatmapData";
 import NetworkVisualizationComponent from './components/pages/NetworkVisualizationPage';
 import { useAppNotifications, AppNotificationSystem } from './hooks/useAppNotifications';
 import { useHeatmapEvents } from './hooks/useHeatmapEvents'
@@ -27,6 +27,7 @@ interface HeatmapWrapperProps {
   cat?: CategoryType;
   onSessionReady?: (sessionId: string) => void;
   onStatsUpdate?: (stats: { sampleSize: number; dataPoints: number }) => void;
+  sidebarTopContent?: React.ReactNode;
 }
 
 const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
@@ -36,7 +37,8 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
   homepage,
   cat = { row: {}, col: {} },
   onSessionReady,
-  onStatsUpdate
+  onStatsUpdate,
+  sidebarTopContent
 }) => {
 
   // --- Hooks and State Management ---
@@ -229,9 +231,12 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
       processHeatmapData(data)
         .then((response) => {
           const { session_id, has_missing_values, global_3d_positions_status } = response;
-          if (session_id && onSessionReady) {
+          if (session_id) {
             sessionId.current = session_id;
-            onSessionReady(session_id);
+
+            if (onSessionReady) {
+              onSessionReady(session_id);
+            }
           }
           if (has_missing_values) {
             setMissingValueSummary(response.missing_value_summary);
@@ -275,10 +280,72 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
           }
           notifyDataError(error.message || 'An unknown error occurred.');
         });
-    } else if (!fileSelectedFlag && homepage && data) {
+    } else if (
+      !fileSelectedFlag &&
+      homepage &&
+      data &&
+      !hasProcessedRef.current
+    ) {
+      hasProcessedRef.current = true;
+
+      /*
+       * Render the existing homepage example immediately.
+       * Do not wait for the backend session.
+       */
       heatmapDataRef.current = data;
-      sessionId.current = id;
       setHeatmapVersion((v) => v + 1);
+
+      /*
+       * Create the corresponding backend session so AI and other
+       * server-side operations can work with the example dataset.
+       */
+      createDemoSession()
+        .then((response) => {
+          const {
+            session_id,
+            global_3d_positions_status
+          } = response;
+
+          if (!session_id) {
+            throw new Error(
+              'Backend did not return a demo session ID.'
+            );
+          }
+
+          sessionId.current = session_id;
+
+          setGlobal3DLoadingStatus(
+            global_3d_positions_status || 'disabled'
+          );
+
+          /*
+           * Force a render so DeckGLHeatmap receives the new sessionID.
+           */
+          setHeatmapVersion((v) => v + 1);
+
+          if (onSessionReady) {
+            onSessionReady(session_id);
+          }
+
+          console.log(
+            '✅ Homepage backend session ready:',
+            session_id
+          );
+        })
+        .catch((error) => {
+          console.error(
+            '❌ Could not initialize homepage AI session:',
+            error
+          );
+
+          addNotification({
+            type: 'error',
+            title: 'AI Assistant Unavailable',
+            message:
+              'The example heatmap is available, but the AI session could not be initialized.',
+            duration: 5000
+          });
+        });
     }
   }, [fileSelectedFlag, data, homepage, id]);
 
@@ -483,6 +550,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
               hideLoading={hideLoading}
               addNotification={addNotification}
               onStatsUpdate={onStatsUpdate}
+              sidebarTopContent={sidebarTopContent}
             />
           ) : (
             !showStrategySelection && (
