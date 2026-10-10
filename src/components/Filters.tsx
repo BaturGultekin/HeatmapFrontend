@@ -190,7 +190,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
       <Box
         sx={{
           mx: '10px',
-          mt: '28px',
+          mt: '4px',
 
           border: `1px solid ${CONTROL_COLORS.border}`,
           borderRadius: '4px',
@@ -267,7 +267,7 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
     <Box
       sx={{
         mx: '10px',
-        mt: '25px',
+        mt: '4px',
 
         border: `1px solid ${CONTROL_COLORS.border}`,
         borderRadius: '4px',

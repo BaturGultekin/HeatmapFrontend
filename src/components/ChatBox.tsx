@@ -33,6 +33,7 @@ interface ChatInputProps {
   onExternalCommandHandled?: () => void;
   colMetadataValues?: Record<string, string[]>;
   rowMetadataValues?: Record<string, string[]>;
+  matrixOrientation?: string;
   backgroundColor?: string;
 }
 
@@ -65,7 +66,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
   backgroundColor = 'transparent',
   colMetadataValues = {},
   rowMetadataValues = {},
-  commandHistory = []
+  commandHistory = [],
+  matrixOrientation = 'Original'
 }) => {
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuggestionsPanel, setShowSuggestionsPanel] = useState<boolean>(false);
@@ -135,6 +137,14 @@ const ChatBox: React.FC<ChatInputProps> = ({
   //   return () => clearInterval(cleanup);
   // }, []);
 
+  const isTransposed =
+    matrixOrientation === 'Transposed';
+
+  const sampleMetadataDisplayAxis =
+    isTransposed
+      ? 'rows'
+      : 'columns';
+
   const dynamicFilterSuggestions = Object.entries(colMetadataValues)
     // Avoid PatientID-like fields with dozens/hundreds of values
     .filter(([_, values]) => values.length >= 2 && values.length <= 6)
@@ -143,9 +153,13 @@ const ChatBox: React.FC<ChatInputProps> = ({
     )
     .slice(0, 6);
 
-  const dynamicSortSuggestions = Object.keys(colMetadataValues)
-    .slice(0, 3)
-    .map(metadata => `Sort columns by ${metadata}`);
+  const dynamicSortSuggestions =
+    Object.keys(colMetadataValues)
+      .slice(0, 3)
+      .map(
+        metadata =>
+          `Sort ${sampleMetadataDisplayAxis} by ${metadata}`
+      );
 
   // Suggestions based on meta-data and valid backend actions
   const suggestions = {
@@ -155,8 +169,8 @@ const ChatBox: React.FC<ChatInputProps> = ({
     ].slice(0, 3),
 
     selection: [
-      "Select top 20 most variant rows",
-      "Select top 100 variant rows"
+      "Select top 20 most variant features",
+      "Select top 100 most variant features"
     ].slice(0, 3),
 
     sorting: [

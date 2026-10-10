@@ -137,11 +137,11 @@ export async function queryOllama(
     filters: any,
     commandHistory: string[] = [],
     transformation: {
-        reZscore: boolean;
         axis: 'row' | 'col';
+        reZscoreFilteredSubset: boolean;
     } = {
-            reZscore: false,
-            axis: 'row'
+            axis: 'row',
+            reZscoreFilteredSubset: false
         }
 ): Promise<HeatmapResponse | { error: string }> {
     try {
