@@ -170,19 +170,52 @@ export const DeckGLHeatmap = ({
   const [matrixOrientation, setMatrixOrientation] = useState('Original');
   type ZScoreAxis = 'row' | 'col';
 
+  const [zScoreAxis, setZScoreAxis] =
+    useState<ZScoreAxis>('col');
+
   const [reZscoreFilteredSubset, setReZscoreFilteredSubset] =
     useState(false);
 
-  const [reZscoreAxis, setReZscoreAxis] =
-    useState<ZScoreAxis>('row');
+  const displayedZScoreAxis: ZScoreAxis =
+    matrixOrientation === 'Transposed'
+      ? (zScoreAxis === 'row' ? 'col' : 'row')
+      : zScoreAxis;
 
   const transformation = {
-    reZscore: reZscoreFilteredSubset,
-    axis: reZscoreAxis
+    axis: zScoreAxis,
+    reZscoreFilteredSubset
   };
   const [order, setOrder] = useState({ row: "alphabetically", col: "alphabetically", rowCat: [] as string[], sortByRowCat: "", colCat: [] as string[], sortByColCat: "", sortColsByRowName: null as string | null });
   // const [order, setOrder] = useState();
   // const [catTemp, setCatTemp] = useState(categories);
+
+  const isTransposed =
+    matrixOrientation === 'Transposed';
+
+  const mapVisualCommandToDataCommand = React.useCallback(
+    (command: string): string => {
+      if (!isTransposed) {
+        return command;
+      }
+
+      const axisMap: Record<string, string> = {
+        row: 'column',
+        rows: 'columns',
+        column: 'row',
+        columns: 'rows',
+        col: 'row',
+        cols: 'rows'
+      };
+
+      return command.replace(
+        /\b(row|rows|column|columns|col|cols)\b/gi,
+        (match) =>
+          axisMap[match.toLowerCase()] ?? match
+      );
+    },
+    [isTransposed]
+  );
+
   const visualOrder = useMemo(() => {
     if (matrixOrientation !== 'Transposed') {
       return order;
@@ -497,8 +530,6 @@ export const DeckGLHeatmap = ({
     setLastSearchQuery("");
   };
 
-  // 4. Update your existing handleOllamaSendClick function
-  // Replace your existing handleOllamaSendClick function with this updated version:
   const handleOllamaSendClick = async (message: string): Promise<{ success: boolean; message: string }> => {
     if (!message.trim()) {
       throw new Error("Please enter a command");
@@ -514,7 +545,19 @@ export const DeckGLHeatmap = ({
     showLoading(`Sending command to AI Assistant...`);
 
     try {
-      const res = await queryOllama(message, sessionID, filters, commandHistory, transformation);
+      const backendMessage =
+        mapVisualCommandToDataCommand(message);
+
+      console.log(
+        '🔄 Command orientation mapping:',
+        {
+          displayedCommand: message,
+          backendCommand: backendMessage,
+          matrixOrientation
+        }
+      );
+
+      const res = await queryOllama(backendMessage, sessionID, filters, commandHistory, transformation);
       hideLoading(); // Hide loading bar as soon as AI responds
 
       console.log('***** res is as follows *******', res)
@@ -543,6 +586,17 @@ export const DeckGLHeatmap = ({
 
       const { action, target, value = "", updated_filters, clustering_result, pathway_results } = res;
 
+      if (action === 'zscore') {
+        const actualAxis: ZScoreAxis =
+          target === 'columns' ||
+            target === 'cols' ||
+            target === 'col'
+            ? 'col'
+            : 'row';
+
+        setZScoreAxis(actualAxis);
+      }
+
       // ✅ NEW: Handle pathway search results
       if (action === "pathway_search" && pathway_results) {
         setPathwayResults(pathway_results);
@@ -554,7 +608,7 @@ export const DeckGLHeatmap = ({
         //   message: `Found ${pathway_results.length} pathways. Please select one to filter your heatmap.`,
         //   duration: 3000,
         // });
-        setCommandHistory((prev) => [...prev, message]);
+        setCommandHistory((prev) => [...prev, backendMessage]);
         return { success: true, message: "Pathway search completed" };
       }
 
@@ -595,6 +649,57 @@ export const DeckGLHeatmap = ({
           ? JSON.parse(clustering_result)
           : clustering_result;
 
+        const renderedRowCount =
+          parsedResult?.row_nodes?.length ?? 0;
+
+        const renderedColCount =
+          parsedResult?.col_nodes?.length ?? 0;
+
+        console.log(
+          '📊 Filtered heatmap dimensions:',
+          {
+            rows: renderedRowCount,
+            columns: renderedColCount
+          }
+        );
+
+        // A single row/column cannot be hierarchically ordered
+        // along that axis. Fall back to normal ordering rather
+        // than leaving the worker in "cluster" mode.
+        if (
+          renderedRowCount <= 1 ||
+          renderedColCount <= 1
+        ) {
+          setOrder((prev) => ({
+            ...prev,
+
+            row:
+              renderedRowCount <= 1
+                ? 'alphabetically'
+                : prev.row,
+
+            col:
+              renderedColCount <= 1
+                ? 'alphabetically'
+                : prev.col,
+
+            sortByRowCat:
+              renderedRowCount <= 1
+                ? ''
+                : prev.sortByRowCat,
+
+            sortByColCat:
+              renderedColCount <= 1
+                ? ''
+                : prev.sortByColCat,
+
+            sortColsByRowName:
+              renderedColCount <= 1
+                ? null
+                : prev.sortColsByRowName
+          }));
+        }
+
         filteredData.current = parsedResult;
 
         // ✅ Auto-switch to cluster order when linkage or distance is changed
@@ -602,8 +707,15 @@ export const DeckGLHeatmap = ({
         if (action === "set_linkage" || action === "set_distance" || action === "set_clustering") {
           setOrder((prev) => ({
             ...prev,
-            row: 'cluster',
-            col: 'cluster',
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
             sortByRowCat: "",
             sortByColCat: "",
             sortColsByRowName: null
@@ -753,7 +865,7 @@ export const DeckGLHeatmap = ({
         setFilters(updated_filters);
       }
       if (action !== "pathway_search") { // Don't duplicate command history for pathway searches
-        setCommandHistory((prev) => [...prev, message]);
+        setCommandHistory((prev) => [...prev, backendMessage]);
       }
 
       return { success: true, message: "Command processed" };
@@ -1094,8 +1206,8 @@ export const DeckGLHeatmap = ({
   const handleRenderHeatmap = (
     currentFilters: any,
     transformationOverride?: {
-      reZscore: boolean;
       axis: ZScoreAxis;
+      reZscoreFilteredSubset: boolean;
     }
   ) => {
     showLoading('Applying filters and re-rendering heatmap...');
@@ -1132,8 +1244,8 @@ export const DeckGLHeatmap = ({
 
     const activeTransformation =
       transformationOverride ?? {
-        reZscore: reZscoreFilteredSubset,
-        axis: reZscoreAxis
+        axis: zScoreAxis,
+        reZscoreFilteredSubset
       };
 
     getRefreshHeatmap(sessionID, filtersWithCrop, activeTransformation)
@@ -1201,31 +1313,34 @@ export const DeckGLHeatmap = ({
   const handleReZscoreToggle = (enabled: boolean) => {
     setReZscoreFilteredSubset(enabled);
 
-    const hasActiveFilters =
-      (filters?.row?.length ?? 0) > 0 ||
-      (filters?.col?.length ?? 0) > 0;
-
-    if (hasActiveFilters) {
-      handleRenderHeatmap(filters, {
-        reZscore: enabled,
-        axis: reZscoreAxis
-      });
-    }
+    handleRenderHeatmap(filters, {
+      axis: zScoreAxis,
+      reZscoreFilteredSubset: enabled
+    });
   };
 
-  const handleReZscoreAxisChange = (axis: ZScoreAxis) => {
-    setReZscoreAxis(axis);
+  const handleZScoreAxisChange = (
+    displayedAxis: ZScoreAxis
+  ) => {
 
-    const hasActiveFilters =
-      (filters?.row?.length ?? 0) > 0 ||
-      (filters?.col?.length ?? 0) > 0;
+    // Backend/data axes remain in original matrix orientation.
+    // When transposed, displayed Row = original Column
+    // and displayed Column = original Row.
+    const actualAxis: ZScoreAxis =
+      matrixOrientation === 'Transposed'
+        ? (
+          displayedAxis === 'row'
+            ? 'col'
+            : 'row'
+        )
+        : displayedAxis;
 
-    if (reZscoreFilteredSubset && hasActiveFilters) {
-      handleRenderHeatmap(filters, {
-        reZscore: true,
-        axis
-      });
-    }
+    setZScoreAxis(actualAxis);
+
+    handleRenderHeatmap(filters, {
+      axis: actualAxis,
+      reZscoreFilteredSubset
+    });
   };
 
 
@@ -2530,9 +2645,9 @@ export const DeckGLHeatmap = ({
           pvalThreshold={pvalThreshold}
           onSliderInteractionStart={saveUndoPoint}
           reZscoreFilteredSubset={reZscoreFilteredSubset}
-          reZscoreAxis={reZscoreAxis}
+          zScoreAxis={displayedZScoreAxis}
           onReZscoreToggle={handleReZscoreToggle}
-          onReZscoreAxisChange={handleReZscoreAxisChange}
+          onZScoreAxisChange={handleZScoreAxisChange}
           matrixOrientation={matrixOrientation}
           setMatrixOrientation={setMatrixOrientationWithHistory}
           onAnalysisChangeStart={saveUndoPoint}
@@ -2562,6 +2677,7 @@ export const DeckGLHeatmap = ({
               colMetadataValues={colMetadataValues}
               rowMetadataValues={rowMetadataValues}
               backgroundColor="transparent"
+              matrixOrientation={matrixOrientation}
             />
           )}
         />

@@ -307,9 +307,9 @@ export default function PersistentDrawerLeft({
   matrixOrientation,
   setMatrixOrientation,
   reZscoreFilteredSubset,
-  reZscoreAxis,
+  zScoreAxis,
   onReZscoreToggle,
-  onReZscoreAxisChange,
+  onZScoreAxisChange,
   onUndo,
   onRedo,
   canUndo,
@@ -355,9 +355,10 @@ export default function PersistentDrawerLeft({
   pvalThreshold: number;
   onSliderInteractionStart: () => void;
   reZscoreFilteredSubset: boolean;
-  reZscoreAxis: 'row' | 'col';
+  zScoreAxis: 'row' | 'col';
+
   onReZscoreToggle: (enabled: boolean) => void;
-  onReZscoreAxisChange: (axis: 'row' | 'col') => void;
+  onZScoreAxisChange: (axis: 'row' | 'col') => void;
   onAnalysisChangeStart: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -411,18 +412,54 @@ export default function PersistentDrawerLeft({
   const colCategorynames = Object.keys(categories.col);
   const rowCategorynames = Object.keys(categories.row);
 
+  const appliedColMetadataFields = new Set(
+    (filters?.col || [])
+      .map((filter: any) => filter?.field)
+      .filter(Boolean)
+      .map((field: string) => field.toLowerCase())
+  );
+
+  const sampleMetadataDisplayAxis =
+    isTransposed
+      ? 'rows'
+      : 'columns';
+
   const metadataFilterCommands = Object.entries(colMetadataValues)
-    .filter(([_, values]) => values.length >= 2 && values.length <= 12)
+    .filter(
+      ([metadata]) =>
+        !appliedColMetadataFields.has(metadata.toLowerCase())
+    )
+    .filter(
+      ([_, values]) =>
+        values.length >= 2 && values.length <= 12
+    )
     .flatMap(([metadata, values]) =>
-      values.map(value => `Filter ${metadata} to ${value}`)
+      values.map(
+        value => `Filter ${metadata} to ${value}`
+      )
     );
 
-  const metadataPlaceholderFilterCommands = Object.entries(colMetadataValues)
-    .filter(([_, values]) => values.length > 12)
-    .map(([metadata]) => `Filter ${metadata} to [value]`);
+  const metadataPlaceholderFilterCommands =
+    Object.entries(colMetadataValues)
+      .filter(
+        ([metadata]) =>
+          !appliedColMetadataFields.has(metadata.toLowerCase())
+      )
+      .filter(
+        ([_, values]) =>
+          values.length > 12
+      )
+      .map(
+        ([metadata]) =>
+          `Filter ${metadata} to [value]`
+      );
 
-  const metadataSortCommands = Object.keys(colMetadataValues)
-    .map(metadata => `Sort columns by ${metadata}`);
+  const metadataSortCommands =
+    Object.keys(colMetadataValues)
+      .map(
+        metadata =>
+          `Sort ${sampleMetadataDisplayAxis} by ${metadata}`
+      );
 
   const metadataCommandGuide = {
     filtering: [
@@ -432,9 +469,9 @@ export default function PersistentDrawerLeft({
     ],
 
     selection: [
-      "Select top 20 most variant rows",
-      "Select top 50 most variant rows",
-      "Select top 100 most variant rows"
+      "Select top 20 most variant features",
+      "Select top 50 most variant features",
+      "Select top 100 most variant features"
     ],
 
     sorting: [
@@ -1052,7 +1089,7 @@ export default function PersistentDrawerLeft({
             </div>
           )}
         {rowlabels && <SearchBox elements={rowlabels} setSearchTerm={setSearchTerm} />}
-        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '4px', marginBottom: '-6px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '4px', marginBottom: '4px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
           <h3 style={sidebarSectionLabelStyle}>
             Opacity Slider
           </h3>
@@ -1077,8 +1114,48 @@ export default function PersistentDrawerLeft({
             marginBottom: '5px'
           }}
         >
+          <h3
+            style={{
+              ...sidebarSectionLabelStyle,
+              margin: 0,
+              marginBottom: '3px'
+            }}
+          >
+            Z-score normalization
+          </h3>
+
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            size="small"
+            value={zScoreAxis}
+            onChange={(_, value) => {
+              if (value !== null) {
+                onZScoreAxisChange(value);
+              }
+            }}
+            sx={{
+              '& .MuiToggleButton-root': {
+                height: '27px',
+                minHeight: '27px',
+                padding: '2px 6px',
+                fontSize: '10.5px',
+                textTransform: 'none'
+              }
+            }}
+          >
+            <ToggleButton value="row">
+              By Row
+            </ToggleButton>
+
+            <ToggleButton value="col">
+              By Column
+            </ToggleButton>
+          </ToggleButtonGroup>
+
           <div
             style={{
+              marginTop: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -1102,47 +1179,16 @@ export default function PersistentDrawerLeft({
             />
           </div>
 
-          <ToggleButtonGroup
-            exclusive
-            fullWidth
-            size="small"
-            value={reZscoreAxis}
-            disabled={!reZscoreFilteredSubset}
-            onChange={(_, value) => {
-              if (value !== null) {
-                onReZscoreAxisChange(value);
-              }
-            }}
-            sx={{
-              marginTop: '3px',
-              '& .MuiToggleButton-root': {
-                height: '27px',
-                minHeight: '27px',
-                padding: '2px 6px',
-                fontSize: '10.5px',
-                textTransform: 'none'
-              }
-            }}
-          >
-            <ToggleButton value="row">
-              By Row
-            </ToggleButton>
-
-            <ToggleButton value="col">
-              By Column
-            </ToggleButton>
-          </ToggleButtonGroup>
-
           <div
             style={{
-              marginTop: '3px',
-              marginBottom: '-25px', //Need to check if this is the best way to do this
+              marginTop: '1px',
+              marginBottom: '0px',
               fontSize: '9px',
               lineHeight: 1.2,
               color: '#777'
             }}
           >
-            OFF preserves values from the original matrix.
+            OFF preserves normalization from the full matrix.
           </div>
         </div>
 

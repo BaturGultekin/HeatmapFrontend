@@ -139,8 +139,8 @@ export const processHeatmapCommand = async (
     visualParams?: Record<string, any>; // Current visualization parameters
     commandHistory?: string[]; // Optional: history of previous commands for context
     transformation?: {
-      reZscore: boolean;
       axis: 'row' | 'col';
+      reZscoreFilteredSubset: boolean;
     };
   }
 ): Promise<any> => {
@@ -155,8 +155,8 @@ export const processHeatmapCommand = async (
         visualParams: {},
         commandHistory: [],
         transformation: {
-          reZscore: false,
-          axis: 'row'
+          axis: 'row',
+          reZscoreFilteredSubset: false
         }
       }
     };
@@ -218,11 +218,11 @@ export const getRefreshHeatmap = async (
   sessionId: string,
   filters?: any,
   transformation: {
-    reZscore: boolean;
     axis: 'row' | 'col';
+    reZscoreFilteredSubset: boolean;
   } = {
-      reZscore: false,
-      axis: 'row'
+      axis: 'row',
+      reZscoreFilteredSubset: false
     }
 ): Promise<any> => {
   try {
