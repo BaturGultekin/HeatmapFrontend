@@ -171,7 +171,7 @@ export const DeckGLHeatmap = ({
   type ZScoreAxis = 'row' | 'col';
 
   const [zScoreAxis, setZScoreAxis] =
-    useState<ZScoreAxis>('col');
+    useState<ZScoreAxis>('row');
 
   const [reZscoreFilteredSubset, setReZscoreFilteredSubset] =
     useState(false);
