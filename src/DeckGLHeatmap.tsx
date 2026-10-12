@@ -29,7 +29,15 @@ import ToastNotification from './components/ToastNotification';
 import { OperatorNodeDependencies } from 'mathjs';
 import { usePrevious } from './hooks/usePrevious';
 import PathwaySelector from './components/PathwaySelector';
-
+import {
+  WorkflowActionType,
+  WorkflowHistoryState,
+  WorkflowSource,
+  WorkflowTarget,
+  appendWorkflowAction,
+  createEmptyWorkflowHistory,
+  createWorkflowAction
+} from './workflow';
 
 // NOTE: center of the screen is 0, 0,
 //       to center a cell you would place it at [-CELL_SIZE / 2, -CELL_SIZE / 2]
@@ -69,6 +77,8 @@ const getMetadataValues = (catColors: any) => {
   return metadataValues;
 };
 
+type ZScoreAxis = 'row' | 'col';
+
 interface CropBox {
   startX: number;
   startY: number;
@@ -89,6 +99,9 @@ interface AnalysisSnapshot {
 
   matrixOrientation: string;
 
+  zScoreAxis: ZScoreAxis;
+  reZscoreFilteredSubset: boolean;
+
   filters: any;
 
   rowClustGroup: number;
@@ -101,6 +114,8 @@ interface AnalysisSnapshot {
 
   filteredData: any | null;
   commandHistory: string[];
+
+  workflowCursor: number;
 }
 
 // interface BorderRect {
@@ -168,7 +183,6 @@ export const DeckGLHeatmap = ({
   const [OpacityValue, setOpacityValue] = useState(OPACITY);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [matrixOrientation, setMatrixOrientation] = useState('Original');
-  type ZScoreAxis = 'row' | 'col';
 
   const [zScoreAxis, setZScoreAxis] =
     useState<ZScoreAxis>('row');
@@ -280,7 +294,31 @@ export const DeckGLHeatmap = ({
     col: []
   });
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [workflowHistory, setWorkflowHistory] =
+    useState<WorkflowHistoryState>(
+      () => createEmptyWorkflowHistory()
+    );
   const MAX_HISTORY = 20;
+
+  useEffect(() => {
+    const activeActions =
+      workflowHistory.actions.slice(
+        0,
+        workflowHistory.cursor
+      );
+
+    const redoActions =
+      workflowHistory.actions.slice(
+        workflowHistory.cursor
+      );
+
+    console.log('🧭 WORKFLOW HISTORY', {
+      cursor: workflowHistory.cursor,
+      total: workflowHistory.actions.length,
+      active: activeActions.map(action => action.label),
+      redo: redoActions.map(action => action.label)
+    });
+  }, [workflowHistory]);
 
   const undoStackRef = useRef<AnalysisSnapshot[]>([]);
   const redoStackRef = useRef<AnalysisSnapshot[]>([]);
@@ -300,6 +338,9 @@ export const DeckGLHeatmap = ({
 
     matrixOrientation,
 
+    zScoreAxis,
+    reZscoreFilteredSubset,
+
     filters: cloneFilters(filters),
 
     rowClustGroup,
@@ -313,7 +354,8 @@ export const DeckGLHeatmap = ({
     // Keep only the existing in-memory reference.
     // Do NOT deep-copy the matrix.
     filteredData: filteredData.current,
-    commandHistory: [...commandHistory]
+    commandHistory: [...commandHistory],
+    workflowCursor: workflowHistory.cursor
   });
 
   const saveUndoPoint = () => {
@@ -327,6 +369,66 @@ export const DeckGLHeatmap = ({
     redoStackRef.current = [];
 
     setHistoryVersion(prev => prev + 1);
+  };
+
+  const recordWorkflowAction = ({
+    type,
+    source,
+    label,
+    target,
+    parameters = {}
+  }: {
+    type: WorkflowActionType;
+    source: WorkflowSource;
+    label: string;
+    target?: WorkflowTarget;
+    parameters?: Record<string, unknown>;
+  }) => {
+
+    const workflowAction = createWorkflowAction({
+      type,
+      source,
+      label,
+      target,
+      parameters
+    });
+
+    setWorkflowHistory(prev =>
+      appendWorkflowAction(
+        prev,
+        workflowAction
+      )
+    );
+  };
+
+  const normalizeWorkflowTarget = (
+    targetValue: unknown
+  ): WorkflowTarget | undefined => {
+
+    const normalized =
+      String(targetValue ?? '').toLowerCase();
+
+    if (
+      normalized === 'row' ||
+      normalized === 'rows'
+    ) {
+      return 'rows';
+    }
+
+    if (
+      normalized === 'col' ||
+      normalized === 'cols' ||
+      normalized === 'column' ||
+      normalized === 'columns'
+    ) {
+      return 'columns';
+    }
+
+    if (normalized === 'both') {
+      return 'both';
+    }
+
+    return undefined;
   };
 
   const setMatrixOrientationWithHistory: React.Dispatch<
@@ -354,6 +456,11 @@ export const DeckGLHeatmap = ({
 
     setMatrixOrientation(snapshot.matrixOrientation);
 
+    setZScoreAxis(snapshot.zScoreAxis);
+    setReZscoreFilteredSubset(
+      snapshot.reZscoreFilteredSubset
+    );
+
     setFilters(cloneFilters(snapshot.filters));
 
     setRowClusterValue(snapshot.rowClustGroup);
@@ -369,6 +476,17 @@ export const DeckGLHeatmap = ({
 
     // Force the worker to render the restored dataset/state.
     setCommandHistory([...snapshot.commandHistory]);
+    setWorkflowHistory(prev => ({
+      ...prev,
+      cursor: Math.max(
+        0,
+        Math.min(
+          snapshot.workflowCursor,
+          prev.actions.length
+        )
+      )
+    }));
+
     setDataVersion(prev => prev + 1);
   };
 
@@ -584,18 +702,30 @@ export const DeckGLHeatmap = ({
         throw new Error(errorMessage);
       }
 
-      const { action, target, value = "", updated_filters, clustering_result, pathway_results } = res;
+      const {
+        action,
+        target,
+        value = "",
+        updated_filters,
+        clustering_result,
+        pathway_results,
+        distance,
+        linkage
+      } = res;
+
+      let zScoreAxisFromResponse: ZScoreAxis | null = null;
 
       if (action === 'zscore') {
-        const actualAxis: ZScoreAxis =
+        zScoreAxisFromResponse =
           target === 'columns' ||
             target === 'cols' ||
             target === 'col'
             ? 'col'
             : 'row';
-
-        setZScoreAxis(actualAxis);
       }
+
+      const workflowTarget =
+        normalizeWorkflowTarget(target);
 
       // ✅ NEW: Handle pathway search results
       if (action === "pathway_search" && pathway_results) {
@@ -621,6 +751,7 @@ export const DeckGLHeatmap = ({
         "sort_by_meta",
         "sort_by_expression",
         "set_opacity",
+        "zscore",
         "set_linkage",
         "set_distance",
         "set_clustering"
@@ -633,6 +764,206 @@ export const DeckGLHeatmap = ({
 
       if (aiChangesHeatmap) {
         saveUndoPoint();
+      }
+
+      if (
+        action === 'zscore' &&
+        zScoreAxisFromResponse
+      ) {
+        setZScoreAxis(zScoreAxisFromResponse);
+
+        recordWorkflowAction({
+          type: 'zscore',
+          source: 'nl',
+          label:
+            zScoreAxisFromResponse === 'row'
+              ? 'Z-score by Row'
+              : 'Z-score by Column',
+          target:
+            zScoreAxisFromResponse === 'row'
+              ? 'rows'
+              : 'columns',
+          parameters: {
+            axis: zScoreAxisFromResponse
+          }
+        });
+      }
+
+      if (action === 'set_distance') {
+        recordWorkflowAction({
+          type: 'set_distance',
+          source: 'nl',
+          label: `Set distance metric to ${value}`,
+          target: 'both',
+          parameters: {
+            distance: value
+          }
+        });
+      }
+
+      if (action === 'set_linkage') {
+        recordWorkflowAction({
+          type: 'set_linkage',
+          source: 'nl',
+          label: `Set linkage method to ${value}`,
+          target: 'both',
+          parameters: {
+            linkage: value
+          }
+        });
+      }
+
+      if (action === 'set_clustering') {
+        const resolvedDistance =
+          distance || 'correlation';
+
+        const resolvedLinkage =
+          linkage || 'average';
+
+        recordWorkflowAction({
+          type: 'set_clustering',
+          source: 'nl',
+          label:
+            `Set clustering: ${resolvedDistance} distance + ` +
+            `${resolvedLinkage} linkage`,
+          target: 'both',
+          parameters: {
+            distance: resolvedDistance,
+            linkage: resolvedLinkage
+          }
+        });
+      }
+
+      if (action === 'cluster') {
+        const targetLabel =
+          workflowTarget === 'rows'
+            ? 'Rows'
+            : workflowTarget === 'columns'
+              ? 'Columns'
+              : workflowTarget === 'both'
+                ? 'Rows and Columns'
+                : 'Matrix';
+
+        recordWorkflowAction({
+          type: 'cluster',
+          source: 'nl',
+          label: `Cluster ${targetLabel}`,
+          target: workflowTarget,
+          parameters: {
+            target: workflowTarget
+          }
+        });
+      }
+
+      if (action === 'sort') {
+        const targetLabel =
+          workflowTarget === 'rows'
+            ? 'Rows'
+            : workflowTarget === 'columns'
+              ? 'Columns'
+              : workflowTarget === 'both'
+                ? 'Rows and Columns'
+                : 'Matrix';
+
+        recordWorkflowAction({
+          type: 'sort',
+          source: 'nl',
+          label:
+            value
+              ? `Sort ${targetLabel} by ${value}`
+              : `Sort ${targetLabel}`,
+          target: workflowTarget,
+          parameters: {
+            method: value
+          }
+        });
+      }
+
+      if (action === 'sort_by_meta') {
+        const targetLabel =
+          workflowTarget === 'rows'
+            ? 'Rows'
+            : workflowTarget === 'columns'
+              ? 'Columns'
+              : 'Matrix';
+
+        recordWorkflowAction({
+          type: 'sort_by_metadata',
+          source: 'nl',
+          label:
+            `Sort ${targetLabel} by metadata: ${value}`,
+          target: workflowTarget,
+          parameters: {
+            field: value
+          }
+        });
+      }
+
+      if (action === 'sort_by_expression') {
+        recordWorkflowAction({
+          type: 'sort_by_expression',
+          source: 'nl',
+          label:
+            `Sort Columns by ${value} expression`,
+          target: workflowTarget ?? 'columns',
+          parameters: {
+            feature: value
+          }
+        });
+      }
+
+      if (
+        action === 'sample_filter' ||
+        action === 'gene_filter'
+      ) {
+        const filterTarget: WorkflowTarget =
+          action === 'sample_filter'
+            ? 'columns'
+            : 'rows';
+
+        recordWorkflowAction({
+          type: 'filter',
+          source: 'nl',
+          label: `Filter ${String(target)} = ${String(value)}`,
+          target: filterTarget,
+          parameters: {
+            field: target,
+            value,
+            operator: 'equals'
+          }
+        });
+      }
+
+      if (action === 'exclude_filter') {
+        recordWorkflowAction({
+          type: 'inverse_filter',
+          source: 'nl',
+          label:
+            `Exclude ${String(target)} = ${String(value)}`,
+          target: 'columns',
+          parameters: {
+            field: target,
+            value,
+            operator: 'exclude_equals'
+          }
+        });
+      }
+
+      const hadActiveFilters =
+        (filters?.row?.length ?? 0) > 0 ||
+        (filters?.col?.length ?? 0) > 0;
+
+      if (
+        action === 'clear_filters' &&
+        hadActiveFilters
+      ) {
+        recordWorkflowAction({
+          type: 'clear_filters',
+          source: 'nl',
+          label: 'Clear All Filters',
+          target: 'matrix',
+          parameters: {}
+        });
       }
 
       // ✅ STEP 2: Check if the backend sent a new data payload
@@ -726,10 +1057,19 @@ export const DeckGLHeatmap = ({
           let notificationMessage = '';
 
           if (action === "set_clustering") {
-            const distance = res.distance || 'correlation';
-            const linkage = res.linkage || 'average';
-            notificationTitle = 'Clustering Parameters Updated';
-            notificationMessage = `Distance: "${distance}", Linkage: "${linkage}". Rows and columns now sorted by cluster order.`;
+            const resolvedDistance =
+              distance || 'correlation';
+
+            const resolvedLinkage =
+              linkage || 'average';
+
+            notificationTitle =
+              'Clustering Parameters Updated';
+
+            notificationMessage =
+              `Distance: "${resolvedDistance}", ` +
+              `Linkage: "${resolvedLinkage}". ` +
+              `Rows and columns now sorted by cluster order.`;
           } else if (action === "set_linkage") {
             notificationTitle = 'Linkage Updated';
             notificationMessage = `Linkage method set to "${value}". Rows and columns now sorted by cluster order.`;
