@@ -1643,7 +1643,8 @@ export const DeckGLHeatmap = ({
     transformationOverride?: {
       axis: ZScoreAxis;
       reZscoreFilteredSubset: boolean;
-    }
+    },
+    onSuccess?: () => void
   ) => {
     showLoading('Applying filters and re-rendering heatmap...');
 
@@ -1718,6 +1719,7 @@ export const DeckGLHeatmap = ({
             }
 
             setDataVersion(prev => prev + 1);
+            onSuccess?.();
 
           } catch (err) {
             console.error("❌ Error processing clustering result:", err);
@@ -1770,12 +1772,43 @@ export const DeckGLHeatmap = ({
         )
         : displayedAxis;
 
+    const axisChanged =
+      actualAxis !== zScoreAxis;
+
+    if (axisChanged) {
+      saveUndoPoint();
+    }
+
     setZScoreAxis(actualAxis);
 
-    handleRenderHeatmap(filters, {
-      axis: actualAxis,
-      reZscoreFilteredSubset
-    });
+    handleRenderHeatmap(
+      filters,
+      {
+        axis: actualAxis,
+        reZscoreFilteredSubset
+      },
+      () => {
+        if (!axisChanged) {
+          return;
+        }
+
+        recordWorkflowAction({
+          type: 'zscore',
+          source: 'gui',
+          label:
+            actualAxis === 'row'
+              ? 'Z-score by Row'
+              : 'Z-score by Column',
+          target:
+            actualAxis === 'row'
+              ? 'rows'
+              : 'columns',
+          parameters: {
+            axis: actualAxis
+          }
+        });
+      }
+    );
   };
 
 
