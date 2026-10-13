@@ -1748,12 +1748,38 @@ export const DeckGLHeatmap = ({
   };
 
   const handleReZscoreToggle = (enabled: boolean) => {
+    if (enabled === reZscoreFilteredSubset) {
+      return;
+    }
+
+    saveUndoPoint();
+
     setReZscoreFilteredSubset(enabled);
 
-    handleRenderHeatmap(filters, {
-      axis: zScoreAxis,
-      reZscoreFilteredSubset: enabled
-    });
+    handleRenderHeatmap(
+      filters,
+      {
+        axis: zScoreAxis,
+        reZscoreFilteredSubset: enabled
+      },
+      () => {
+        recordWorkflowAction({
+          type: 'rezscore_filtered_subset',
+          source: 'gui',
+          label: enabled
+            ? 'Enable Re-Z-score Filtered Subset'
+            : 'Disable Re-Z-score Filtered Subset',
+          target:
+            zScoreAxis === 'row'
+              ? 'rows'
+              : 'columns',
+          parameters: {
+            enabled,
+            axis: zScoreAxis
+          }
+        });
+      }
+    );
   };
 
   const handleZScoreAxisChange = (
