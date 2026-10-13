@@ -443,8 +443,25 @@ export const DeckGLHeatmap = ({
       return;
     }
 
+    const willBeTransposed =
+      nextOrientation === 'Transposed';
+
     saveUndoPoint();
+
     setMatrixOrientation(nextOrientation);
+
+    recordWorkflowAction({
+      type: 'transpose',
+      source: 'gui',
+      label: willBeTransposed
+        ? 'Transpose Matrix'
+        : 'Restore Original Orientation',
+      target: 'matrix',
+      parameters: {
+        orientation: nextOrientation,
+        transposed: willBeTransposed
+      }
+    });
   };
 
   const restoreAnalysisSnapshot = (snapshot: AnalysisSnapshot) => {
