@@ -974,6 +974,38 @@ export const DeckGLHeatmap = ({
         });
       }
 
+      if (
+        action === 'multi_exclude' &&
+        resolvedFilterCriteria.length > 0
+      ) {
+        const excludeCriteria =
+          resolvedFilterCriteria.map(
+            criterion => ({
+              ...criterion,
+              operator: 'exclude_equals'
+            })
+          );
+
+        const criteriaLabel =
+          excludeCriteria
+            .map(
+              criterion =>
+                `${criterion.field} = ${String(criterion.value)}`
+            )
+            .join(' AND ');
+
+        recordWorkflowAction({
+          type: 'inverse_filter',
+          source: 'nl',
+          label: `Exclude ${criteriaLabel}`,
+          target: 'columns',
+          parameters: {
+            mode: 'all',
+            criteria: excludeCriteria
+          }
+        });
+      }
+
       if (action === 'exclude_filter') {
         recordWorkflowAction({
           type: 'inverse_filter',
