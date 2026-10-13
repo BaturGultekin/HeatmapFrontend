@@ -710,7 +710,8 @@ export const DeckGLHeatmap = ({
         clustering_result,
         pathway_results,
         distance,
-        linkage
+        linkage,
+        resolved_filters
       } = res;
 
       let zScoreAxisFromResponse: ZScoreAxis | null = null;
@@ -726,6 +727,21 @@ export const DeckGLHeatmap = ({
 
       const workflowTarget =
         normalizeWorkflowTarget(target);
+
+      const resolvedFilterCriteria =
+        Array.isArray(resolved_filters)
+          ? resolved_filters
+            .filter(
+              (filter: any) =>
+                filter?.target &&
+                filter?.value
+            )
+            .map((filter: any) => ({
+              field: String(filter.target),
+              value: filter.value,
+              operator: 'equals'
+            }))
+          : [];
 
       // ✅ NEW: Handle pathway search results
       if (action === "pathway_search" && pathway_results) {
@@ -930,6 +946,30 @@ export const DeckGLHeatmap = ({
             field: target,
             value,
             operator: 'equals'
+          }
+        });
+      }
+
+      if (
+        action === 'multi_filter' &&
+        resolvedFilterCriteria.length > 0
+      ) {
+        const criteriaLabel =
+          resolvedFilterCriteria
+            .map(
+              criterion =>
+                `${criterion.field} = ${String(criterion.value)}`
+            )
+            .join(' AND ');
+
+        recordWorkflowAction({
+          type: 'filter',
+          source: 'nl',
+          label: `Filter ${criteriaLabel}`,
+          target: 'columns',
+          parameters: {
+            mode: 'all',
+            criteria: resolvedFilterCriteria
           }
         });
       }
