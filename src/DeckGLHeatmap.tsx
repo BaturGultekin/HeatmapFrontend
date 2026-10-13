@@ -975,6 +975,29 @@ export const DeckGLHeatmap = ({
       }
 
       if (
+        action === 'variance' &&
+        workflowTarget === 'rows'
+      ) {
+        const topN = Number.parseInt(
+          String(value),
+          10
+        );
+
+        if (Number.isFinite(topN) && topN > 0) {
+          recordWorkflowAction({
+            type: 'variance_filter',
+            source: 'nl',
+            label: `Keep Top ${topN} Rows by Variance`,
+            target: 'rows',
+            parameters: {
+              topN,
+              metric: 'variance'
+            }
+          });
+        }
+      }
+
+      if (
         action === 'multi_exclude' &&
         resolvedFilterCriteria.length > 0
       ) {
