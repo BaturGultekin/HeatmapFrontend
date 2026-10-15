@@ -115,6 +115,10 @@ interface AnalysisSnapshot {
   filteredData: any | null;
   commandHistory: string[];
 
+  filteredIdxDict: CropBox | null;
+  croppedRowIndices: number[] | null;
+  croppedColIndices: number[] | null;
+
   workflowCursor: number;
 }
 
@@ -276,6 +280,10 @@ export const DeckGLHeatmap = ({
   const dataStateRef = useRef<DataStateShape | null>(null);
   const heatmapStateRef = useRef<HeatmapStateShape | null>(null);
   const workerRef = useRef<Worker | null>(null);
+  const pendingCropWorkflowRef = useRef<{
+    label: string;
+    parameters: Record<string, any>;
+  } | null>(null);
   // Two separate lightweight version counters
   const [datastateVersion, setDataStateVersion] = useState(0);
   const [heatmapstateVersion, setHeatmapStateVersion] = useState(0);
@@ -355,6 +363,17 @@ export const DeckGLHeatmap = ({
     // Do NOT deep-copy the matrix.
     filteredData: filteredData.current,
     commandHistory: [...commandHistory],
+
+    filteredIdxDict: filteredIdxDict
+      ? { ...filteredIdxDict }
+      : null,
+    croppedRowIndices: croppedRowIndices
+      ? [...croppedRowIndices]
+      : null,
+    croppedColIndices: croppedColIndices
+      ? [...croppedColIndices]
+      : null,
+
     workflowCursor: workflowHistory.cursor
   });
 
@@ -490,6 +509,28 @@ export const DeckGLHeatmap = ({
 
     // Restore the previous in-memory dataset reference.
     filteredData.current = snapshot.filteredData;
+
+    setFilteredIdxDict(
+      snapshot.filteredIdxDict
+        ? { ...snapshot.filteredIdxDict }
+        : null
+    );
+
+    setCroppedRowIndices(
+      snapshot.croppedRowIndices
+        ? [...snapshot.croppedRowIndices]
+        : null
+    );
+
+    setCroppedColIndices(
+      snapshot.croppedColIndices
+        ? [...snapshot.croppedColIndices]
+        : null
+    );
+
+    setCropBox(null);
+    setIsCropping(false);
+    setIsDrawing(false);
 
     // Force the worker to render the restored dataset/state.
     setCommandHistory([...snapshot.commandHistory]);
@@ -2040,6 +2081,21 @@ export const DeckGLHeatmap = ({
         setDataStateVersion(prev => prev + 1);
         wasDataUpdated = true;
 
+        if (pendingCropWorkflowRef.current) {
+          const pendingCrop =
+            pendingCropWorkflowRef.current;
+
+          pendingCropWorkflowRef.current = null;
+
+          recordWorkflowAction({
+            type: 'crop',
+            source: 'gui',
+            label: pendingCrop.label,
+            target: 'matrix',
+            parameters: pendingCrop.parameters
+          });
+        }
+
         // Calculate and report stats
         if (onStatsUpdate && event.data.dataState) {
           const sampleSize = event.data.dataState.rowLabels?.length || 0;
@@ -2087,6 +2143,7 @@ export const DeckGLHeatmap = ({
     };
 
     const handleError = (error: ErrorEvent) => {
+      pendingCropWorkflowRef.current = null;
       console.error("Worker error:", error);
       addNotification({
         type: 'error',
@@ -2124,6 +2181,7 @@ export const DeckGLHeatmap = ({
           messageType: 'dataState',
         });
       } catch (error) {
+        pendingCropWorkflowRef.current = null;
         console.error("Failed to send data to worker:", error);
       }
     }
@@ -2939,6 +2997,16 @@ export const DeckGLHeatmap = ({
           originalColIndices.push(sortedColIndices[v]);
         }
 
+        const canonicalRowIndices =
+          matrixOrientation === 'Transposed'
+            ? originalColIndices
+            : originalRowIndices;
+
+        const canonicalColIndices =
+          matrixOrientation === 'Transposed'
+            ? originalRowIndices
+            : originalColIndices;
+
         // Store visual bounds for pan constraints (still needed for view management)
         const filtered = {
           startX: visualColStart,
@@ -2947,13 +3015,30 @@ export const DeckGLHeatmap = ({
           endY: visualRowEnd
         };
 
+        saveUndoPoint();
+
         // Clear cropBox FIRST to prevent re-triggering this useEffect
         setCropBox(null);
 
         // Update states
         setFilteredIdxDict(filtered);  // Visual bounds for pan constraints
-        setCroppedRowIndices(originalRowIndices);  // Original indices for worker
-        setCroppedColIndices(originalColIndices);  // Original indices for worker
+        setCroppedRowIndices(canonicalRowIndices);  // Canonical indices for worker
+        setCroppedColIndices(canonicalColIndices);  // Canonical indices for worker
+
+        pendingCropWorkflowRef.current = {
+          label:
+            `Crop Matrix to ${canonicalRowIndices.length} Rows × ` +
+            `${canonicalColIndices.length} Columns`,
+          parameters: {
+            rowIndices: [...canonicalRowIndices],
+            columnIndices: [...canonicalColIndices],
+            rowCount: canonicalRowIndices.length,
+            columnCount: canonicalColIndices.length,
+            orientationAtSelection: matrixOrientation,
+            indexSpace: 'canonical',
+            requiresCompatibleOrdering: true
+          }
+        };
 
         // Reset view to origin so cropped data starts at top-left
         resetViewToOrigin();
