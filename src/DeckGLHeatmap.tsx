@@ -280,6 +280,9 @@ export const DeckGLHeatmap = ({
   const dataStateRef = useRef<DataStateShape | null>(null);
   const heatmapStateRef = useRef<HeatmapStateShape | null>(null);
   const workerRef = useRef<Worker | null>(null);
+  const pendingGuiClusterWorkflowRef = useRef<
+    'rows' | 'columns' | null
+  >(null);
   const pendingCropWorkflowRef = useRef<{
     label: string;
     parameters: Record<string, any>;
@@ -418,6 +421,12 @@ export const DeckGLHeatmap = ({
         workflowAction
       )
     );
+  };
+
+  const handleGuiClusterRequest = (
+    target: 'rows' | 'columns'
+  ) => {
+    pendingGuiClusterWorkflowRef.current = target;
   };
 
   const normalizeWorkflowTarget = (
@@ -2123,20 +2132,63 @@ export const DeckGLHeatmap = ({
       // If the data was recomputed, fire the appropriate success notification.
       // Because this effect depends on 'order', the 'order' variable here is always up-to-date.
       if (wasDataUpdated && previousOrder) {
-        // Check if the ROW order was the thing that just changed
+        // Existing success notifications
         if (order.row !== previousOrder.row) {
           if (order.row === 'cluster') {
             notifyClusteringSuccess();
           } else {
             notifySortSuccess(order.row, 'rows');
           }
-        }
-        // Check if the COLUMN order was the thing that just changed
-        else if (order.col !== previousOrder.col) {
+        } else if (order.col !== previousOrder.col) {
           if (order.col === 'cluster') {
             notifyClusteringSuccess();
           } else {
             notifySortSuccess(order.col, 'columns');
+          }
+        }
+
+        // Record a pending GUI clustering action only after
+        // the corresponding canonical order change succeeds.
+        const pendingClusterTarget =
+          pendingGuiClusterWorkflowRef.current;
+
+        if (pendingClusterTarget) {
+          const clusterChangeSucceeded =
+            pendingClusterTarget === 'rows'
+              ? (
+                order.row === 'cluster' &&
+                (
+                  order.row !== previousOrder.row ||
+                  order.sortByRowCat !== previousOrder.sortByRowCat ||
+                  order.sortColsByRowName !== previousOrder.sortColsByRowName
+                )
+              )
+              : (
+                order.col === 'cluster' &&
+                (
+                  order.col !== previousOrder.col ||
+                  order.sortByColCat !== previousOrder.sortByColCat ||
+                  order.sortColsByRowName !== previousOrder.sortColsByRowName
+                )
+              );
+
+          if (clusterChangeSucceeded) {
+            pendingGuiClusterWorkflowRef.current = null;
+
+            const targetLabel =
+              pendingClusterTarget === 'rows'
+                ? 'Rows'
+                : 'Columns';
+
+            recordWorkflowAction({
+              type: 'cluster',
+              source: 'gui',
+              label: `Cluster ${targetLabel}`,
+              target: pendingClusterTarget,
+              parameters: {
+                target: pendingClusterTarget
+              }
+            });
           }
         }
       }
@@ -2144,6 +2196,7 @@ export const DeckGLHeatmap = ({
 
     const handleError = (error: ErrorEvent) => {
       pendingCropWorkflowRef.current = null;
+      pendingGuiClusterWorkflowRef.current = null;
       console.error("Worker error:", error);
       addNotification({
         type: 'error',
@@ -2182,6 +2235,7 @@ export const DeckGLHeatmap = ({
         });
       } catch (error) {
         pendingCropWorkflowRef.current = null;
+        pendingGuiClusterWorkflowRef.current = null;
         console.error("Failed to send data to worker:", error);
       }
     }
@@ -3247,6 +3301,7 @@ export const DeckGLHeatmap = ({
           matrixOrientation={matrixOrientation}
           setMatrixOrientation={setMatrixOrientationWithHistory}
           onAnalysisChangeStart={saveUndoPoint}
+          onGuiClusterRequest={handleGuiClusterRequest}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}

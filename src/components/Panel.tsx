@@ -303,6 +303,7 @@ export default function PersistentDrawerLeft({
   opacityValue,
   pvalThreshold,
   onAnalysisChangeStart,
+  onGuiClusterRequest,
   onSliderInteractionStart,
   matrixOrientation,
   setMatrixOrientation,
@@ -360,6 +361,9 @@ export default function PersistentDrawerLeft({
   onReZscoreToggle: (enabled: boolean) => void;
   onZScoreAxisChange: (axis: 'row' | 'col') => void;
   onAnalysisChangeStart: () => void;
+  onGuiClusterRequest?: (
+    target: 'rows' | 'columns'
+  ) => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -529,7 +533,24 @@ export default function PersistentDrawerLeft({
   const handleRowItemClick = (index: number) => {
     const actionType = orderArray[index];
 
+    const willChange =
+      displayedRowOrder !== actionType ||
+      (
+        isTransposed
+          ? order.sortByColCat !== ""
+          : order.sortByRowCat !== ""
+      ) ||
+      order.sortColsByRowName !== null;
+
+    if (!willChange) return;
+
+    onAnalysisChangeStart();
+
     if (actionType === 'cluster') {
+      onGuiClusterRequest?.(
+        isTransposed ? 'columns' : 'rows'
+      );
+
       notifyClusteringStarted();
     } else {
       notifySortStarted(actionType, 'rows');
@@ -559,7 +580,24 @@ export default function PersistentDrawerLeft({
   const handleColItemClick = (index: number) => {
     const actionType = orderArray[index];
 
+    const willChange =
+      displayedColOrder !== actionType ||
+      (
+        isTransposed
+          ? order.sortByRowCat !== ""
+          : order.sortByColCat !== ""
+      ) ||
+      order.sortColsByRowName !== null;
+
+    if (!willChange) return;
+
+    onAnalysisChangeStart();
+
     if (actionType === 'cluster') {
+      onGuiClusterRequest?.(
+        isTransposed ? 'rows' : 'columns'
+      );
+
       notifyClusteringStarted();
     } else {
       notifySortStarted(actionType, 'columns');
