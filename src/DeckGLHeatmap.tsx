@@ -284,6 +284,12 @@ export const DeckGLHeatmap = ({
   const pendingGuiClusterWorkflowRef = useRef<
     'rows' | 'columns' | null
   >(null);
+
+  const pendingGuiSortWorkflowRef = useRef<{
+    target: 'rows' | 'columns';
+    method: string;
+  } | null>(null);
+
   const pendingCropWorkflowRef = useRef<{
     label: string;
     parameters: Record<string, any>;
@@ -431,6 +437,16 @@ export const DeckGLHeatmap = ({
     target: 'rows' | 'columns'
   ) => {
     pendingGuiClusterWorkflowRef.current = target;
+  };
+
+  const handleGuiSortRequest = (
+    target: 'rows' | 'columns',
+    method: string
+  ) => {
+    pendingGuiSortWorkflowRef.current = {
+      target,
+      method
+    };
   };
 
   const normalizeWorkflowTarget = (
@@ -2207,12 +2223,56 @@ export const DeckGLHeatmap = ({
             });
           }
         }
+
+        const pendingSort =
+          pendingGuiSortWorkflowRef.current;
+
+        if (pendingSort) {
+          const sortChangeSucceeded =
+            pendingSort.target === 'rows'
+              ? (
+                order.row === pendingSort.method &&
+                (
+                  order.row !== previousOrder.row ||
+                  order.sortByRowCat !== previousOrder.sortByRowCat ||
+                  order.sortColsByRowName !== previousOrder.sortColsByRowName
+                )
+              )
+              : (
+                order.col === pendingSort.method &&
+                (
+                  order.col !== previousOrder.col ||
+                  order.sortByColCat !== previousOrder.sortByColCat ||
+                  order.sortColsByRowName !== previousOrder.sortColsByRowName
+                )
+              );
+
+          if (sortChangeSucceeded) {
+            pendingGuiSortWorkflowRef.current = null;
+
+            const targetLabel =
+              pendingSort.target === 'rows'
+                ? 'Rows'
+                : 'Columns';
+
+            recordWorkflowAction({
+              type: 'sort',
+              source: 'gui',
+              label: `Sort ${targetLabel} by ${pendingSort.method}`,
+              target: pendingSort.target,
+              parameters: {
+                method: pendingSort.method
+              }
+            });
+          }
+        }
       }
     };
 
     const handleError = (error: ErrorEvent) => {
       pendingCropWorkflowRef.current = null;
       pendingGuiClusterWorkflowRef.current = null;
+      pendingGuiSortWorkflowRef.current = null;
       pendingClearCropWorkflowRef.current = false;
 
       console.error("Worker error:", error);
@@ -2254,6 +2314,7 @@ export const DeckGLHeatmap = ({
       } catch (error) {
         pendingCropWorkflowRef.current = null;
         pendingGuiClusterWorkflowRef.current = null;
+        pendingGuiSortWorkflowRef.current = null;
         pendingClearCropWorkflowRef.current = false;
 
         console.error("Failed to send data to worker:", error);
@@ -3333,6 +3394,7 @@ export const DeckGLHeatmap = ({
           setMatrixOrientation={setMatrixOrientationWithHistory}
           onAnalysisChangeStart={saveUndoPoint}
           onGuiClusterRequest={handleGuiClusterRequest}
+          onGuiSortRequest={handleGuiSortRequest}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}

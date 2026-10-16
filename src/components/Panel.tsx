@@ -304,6 +304,7 @@ export default function PersistentDrawerLeft({
   pvalThreshold,
   onAnalysisChangeStart,
   onGuiClusterRequest,
+  onGuiSortRequest,
   onSliderInteractionStart,
   matrixOrientation,
   setMatrixOrientation,
@@ -363,6 +364,10 @@ export default function PersistentDrawerLeft({
   onAnalysisChangeStart: () => void;
   onGuiClusterRequest?: (
     target: 'rows' | 'columns'
+  ) => void;
+  onGuiSortRequest?: (
+    target: 'rows' | 'columns',
+    method: string
   ) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -553,6 +558,11 @@ export default function PersistentDrawerLeft({
 
       notifyClusteringStarted();
     } else {
+      onGuiSortRequest?.(
+        isTransposed ? 'columns' : 'rows',
+        actionType
+      );
+
       notifySortStarted(actionType, 'rows');
     }
 
@@ -600,6 +610,11 @@ export default function PersistentDrawerLeft({
 
       notifyClusteringStarted();
     } else {
+      onGuiSortRequest?.(
+        isTransposed ? 'rows' : 'columns',
+        actionType
+      );
+
       notifySortStarted(actionType, 'columns');
     }
 
