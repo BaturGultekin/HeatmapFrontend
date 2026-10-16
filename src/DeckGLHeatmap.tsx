@@ -280,6 +280,7 @@ export const DeckGLHeatmap = ({
   const dataStateRef = useRef<DataStateShape | null>(null);
   const heatmapStateRef = useRef<HeatmapStateShape | null>(null);
   const workerRef = useRef<Worker | null>(null);
+
   const pendingGuiClusterWorkflowRef = useRef<
     'rows' | 'columns' | null
   >(null);
@@ -287,6 +288,9 @@ export const DeckGLHeatmap = ({
     label: string;
     parameters: Record<string, any>;
   } | null>(null);
+
+  const pendingClearCropWorkflowRef = useRef(false);
+
   // Two separate lightweight version counters
   const [datastateVersion, setDataStateVersion] = useState(0);
   const [heatmapstateVersion, setHeatmapStateVersion] = useState(0);
@@ -2105,6 +2109,18 @@ export const DeckGLHeatmap = ({
           });
         }
 
+        if (pendingClearCropWorkflowRef.current) {
+          pendingClearCropWorkflowRef.current = false;
+
+          recordWorkflowAction({
+            type: 'clear_crop',
+            source: 'gui',
+            label: 'Clear Crop',
+            target: 'matrix',
+            parameters: {}
+          });
+        }
+
         // Calculate and report stats
         if (onStatsUpdate && event.data.dataState) {
           const sampleSize = event.data.dataState.rowLabels?.length || 0;
@@ -2197,6 +2213,8 @@ export const DeckGLHeatmap = ({
     const handleError = (error: ErrorEvent) => {
       pendingCropWorkflowRef.current = null;
       pendingGuiClusterWorkflowRef.current = null;
+      pendingClearCropWorkflowRef.current = false;
+
       console.error("Worker error:", error);
       addNotification({
         type: 'error',
@@ -2236,6 +2254,8 @@ export const DeckGLHeatmap = ({
       } catch (error) {
         pendingCropWorkflowRef.current = null;
         pendingGuiClusterWorkflowRef.current = null;
+        pendingClearCropWorkflowRef.current = false;
+
         console.error("Failed to send data to worker:", error);
       }
     }
@@ -2423,10 +2443,21 @@ export const DeckGLHeatmap = ({
 
   // Reset function - clears crop and resets view to show full heatmap
   const resetFilteredDict = () => {
+    const hasActiveCrop =
+      filteredIdxDict !== null ||
+      croppedRowIndices !== null ||
+      croppedColIndices !== null;
+
+    if (!hasActiveCrop) return;
+
+    saveUndoPoint();
+    pendingClearCropWorkflowRef.current = true;
+
     setFilteredIdxDict(null);
     setCropBox(null);
     setIsCropping(false);
     setIsDrawing(false);
+
     // Clear cropped indices to trigger worker to load full data
     setCroppedRowIndices(null);
     setCroppedColIndices(null);

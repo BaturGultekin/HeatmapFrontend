@@ -27,7 +27,8 @@ export type WorkflowActionType =
     | 'set_linkage'
     | 'set_clustering'
     | 'transpose'
-    | 'crop';
+    | 'crop'
+    | 'clear_crop';
 
 export interface WorkflowAction {
     id: string;
