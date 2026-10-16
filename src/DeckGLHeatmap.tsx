@@ -207,6 +207,9 @@ export const DeckGLHeatmap = ({
   // const [order, setOrder] = useState();
   // const [catTemp, setCatTemp] = useState(categories);
 
+  const orderRef = useRef(order);
+  orderRef.current = order;
+
   const isTransposed =
     matrixOrientation === 'Transposed';
 
@@ -293,6 +296,10 @@ export const DeckGLHeatmap = ({
   const pendingGuiMetadataSortWorkflowRef = useRef<{
     target: 'rows' | 'columns';
     field: string;
+  } | null>(null);
+
+  const pendingGuiExpressionSortWorkflowRef = useRef<{
+    feature: string;
   } | null>(null);
 
   const pendingCropWorkflowRef = useRef<{
@@ -407,6 +414,9 @@ export const DeckGLHeatmap = ({
 
     setHistoryVersion(prev => prev + 1);
   };
+
+  const saveUndoPointRef = useRef(saveUndoPoint);
+  saveUndoPointRef.current = saveUndoPoint;
 
   const recordWorkflowAction = ({
     type,
@@ -654,28 +664,57 @@ export const DeckGLHeatmap = ({
     rowLabel: (info: any, event: any) => {
       // Sort columns by this row's values
       console.log('🖱️ Row label clicked:', info);
-      if (info?.index !== undefined && dataStateRef.current?.rowLabels) {
-        const rowName = dataStateRef.current.rowLabels[info.index]?.text;
+
+      if (
+        matrixOrientation !== 'Transposed' &&
+        info?.index !== undefined &&
+        dataStateRef.current?.rowLabels
+      ) {
+        const rowName =
+          dataStateRef.current.rowLabels[info.index]?.text;
+
         console.log('📍 Row name extracted:', rowName);
+
         if (rowName) {
-          console.log('✅ Setting order with sortColsByRowName:', rowName);
-          setOrder((prev) => {
-            const newOrder = {
-              ...prev,
-              col: "", // Clear standard column sorting
-              sortByColCat: "", // Clear category-based column sorting
-              sortColsByRowName: rowName // Store row name for column sorting
+          const currentOrder = orderRef.current;
+
+          const willChange =
+            currentOrder.col !== "" ||
+            currentOrder.sortByColCat !== "" ||
+            currentOrder.sortColsByRowName !== rowName;
+
+          if (willChange) {
+            saveUndoPointRef.current();
+
+            pendingGuiExpressionSortWorkflowRef.current = {
+              feature: rowName
             };
-            console.log('📝 New order state:', newOrder);
-            return newOrder;
-          });
+
+            console.log(
+              '✅ Setting order with sortColsByRowName:',
+              rowName
+            );
+
+            setOrder((prev) => {
+              const newOrder = {
+                ...prev,
+                col: "",
+                sortByColCat: "",
+                sortColsByRowName: rowName
+              };
+
+              console.log('📝 New order state:', newOrder);
+              return newOrder;
+            });
+          }
         }
       }
+
       // Then, call the handler passed from the parent if it exists
       onClick?.rowLabel?.(info, event);
     },
     columnLabel: onClick?.columnLabel,
-  }), [onClick, filters]); // This now correctly depends on the prop from the parent and filters.
+  }), [onClick, filters, matrixOrientation]); // This now correctly depends on the prop from the parent and filters.
 
 
 
@@ -2313,6 +2352,33 @@ export const DeckGLHeatmap = ({
             });
           }
         }
+        const pendingExpressionSort =
+          pendingGuiExpressionSortWorkflowRef.current;
+
+        if (pendingExpressionSort) {
+          const expressionSortChangeSucceeded =
+            order.sortColsByRowName === pendingExpressionSort.feature &&
+            (
+              order.sortColsByRowName !== previousOrder.sortColsByRowName ||
+              order.col !== previousOrder.col ||
+              order.sortByColCat !== previousOrder.sortByColCat
+            );
+
+          if (expressionSortChangeSucceeded) {
+            pendingGuiExpressionSortWorkflowRef.current = null;
+
+            recordWorkflowAction({
+              type: 'sort_by_expression',
+              source: 'gui',
+              label:
+                `Sort Columns by ${pendingExpressionSort.feature} expression`,
+              target: 'columns',
+              parameters: {
+                feature: pendingExpressionSort.feature
+              }
+            });
+          }
+        }
       }
     };
 
@@ -2321,6 +2387,7 @@ export const DeckGLHeatmap = ({
       pendingGuiClusterWorkflowRef.current = null;
       pendingGuiSortWorkflowRef.current = null;
       pendingGuiMetadataSortWorkflowRef.current = null;
+      pendingGuiExpressionSortWorkflowRef.current = null;
       pendingClearCropWorkflowRef.current = false;
 
       console.error("Worker error:", error);
@@ -2364,6 +2431,7 @@ export const DeckGLHeatmap = ({
         pendingGuiClusterWorkflowRef.current = null;
         pendingGuiSortWorkflowRef.current = null;
         pendingGuiMetadataSortWorkflowRef.current = null;
+        pendingGuiExpressionSortWorkflowRef.current = null;
         pendingClearCropWorkflowRef.current = false;
 
         console.error("Failed to send data to worker:", error);
