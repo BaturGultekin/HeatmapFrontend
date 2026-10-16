@@ -32,6 +32,7 @@ interface FiltersSectionProps {
   filters: FiltersState;
   setFilters: React.Dispatch<React.SetStateAction<FiltersState>>;
   onRenderHeatmap: (currentFilters: FiltersState) => void;
+  onGuiClearFiltersRequest?: () => void;
 }
 
 
@@ -48,7 +49,8 @@ const CONTROL_COLORS = {
 const FiltersSection: React.FC<FiltersSectionProps> = ({
   filters,
   setFilters,
-  onRenderHeatmap
+  onRenderHeatmap,
+  onGuiClearFiltersRequest
 }) => {
 
   const [pendingFilters, setPendingFilters] =
@@ -129,6 +131,18 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
 
   // Apply changes
   const applyChanges = () => {
+    const hadActiveFilters =
+      filters.row.length > 0 ||
+      filters.col.length > 0;
+
+    const isClearingAll =
+      pendingFilters.row.length === 0 &&
+      pendingFilters.col.length === 0;
+
+    if (hadActiveFilters && isClearingAll) {
+      onGuiClearFiltersRequest?.();
+    }
+
     setFilters(pendingFilters);
     onRenderHeatmap(pendingFilters);
     setHasChanges(false);

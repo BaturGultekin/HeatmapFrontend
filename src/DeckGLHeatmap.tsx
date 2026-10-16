@@ -302,6 +302,8 @@ export const DeckGLHeatmap = ({
     feature: string;
   } | null>(null);
 
+  const pendingGuiClearFiltersWorkflowRef = useRef(false);
+
   const pendingCropWorkflowRef = useRef<{
     label: string;
     parameters: Record<string, any>;
@@ -462,6 +464,11 @@ export const DeckGLHeatmap = ({
       target,
       method
     };
+  };
+
+  const handleGuiClearFiltersRequest = () => {
+    saveUndoPoint();
+    pendingGuiClearFiltersWorkflowRef.current = true;
   };
 
   const normalizeWorkflowTarget = (
@@ -1829,6 +1836,7 @@ export const DeckGLHeatmap = ({
                 : 'Failed to refresh heatmap data.',
           });
 
+          pendingGuiClearFiltersWorkflowRef.current = false;
           return;
         }
 
@@ -1850,9 +1858,27 @@ export const DeckGLHeatmap = ({
             }
 
             setDataVersion(prev => prev + 1);
+
+            if (
+              pendingGuiClearFiltersWorkflowRef.current &&
+              (currentFilters?.row?.length ?? 0) === 0 &&
+              (currentFilters?.col?.length ?? 0) === 0
+            ) {
+              pendingGuiClearFiltersWorkflowRef.current = false;
+
+              recordWorkflowAction({
+                type: 'clear_filters',
+                source: 'gui',
+                label: 'Clear All Filters',
+                target: 'matrix',
+                parameters: {}
+              });
+            }
+
             onSuccess?.();
 
           } catch (err) {
+            pendingGuiClearFiltersWorkflowRef.current = false;
             console.error("❌ Error processing clustering result:", err);
 
             addNotification({
@@ -1861,9 +1887,12 @@ export const DeckGLHeatmap = ({
               message: 'Failed to parse clustering result from server.',
             });
           }
+        } else {
+          pendingGuiClearFiltersWorkflowRef.current = false;
         }
       })
       .catch((err) => {
+        pendingGuiClearFiltersWorkflowRef.current = false;
         console.error("❌ Network error refreshing heatmap:", err);
 
         addNotification({
@@ -3558,6 +3587,7 @@ export const DeckGLHeatmap = ({
           onAnalysisChangeStart={saveUndoPoint}
           onGuiClusterRequest={handleGuiClusterRequest}
           onGuiSortRequest={handleGuiSortRequest}
+          onGuiClearFiltersRequest={handleGuiClearFiltersRequest}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}

@@ -305,6 +305,7 @@ export default function PersistentDrawerLeft({
   onAnalysisChangeStart,
   onGuiClusterRequest,
   onGuiSortRequest,
+  onGuiClearFiltersRequest,
   onSliderInteractionStart,
   matrixOrientation,
   setMatrixOrientation,
@@ -369,6 +370,7 @@ export default function PersistentDrawerLeft({
     target: 'rows' | 'columns',
     method: string
   ) => void;
+  onGuiClearFiltersRequest?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -1278,6 +1280,7 @@ export default function PersistentDrawerLeft({
           filters={filters}
           setFilters={setFilters}
           onRenderHeatmap={onRenderHeatmap}
+          onGuiClearFiltersRequest={onGuiClearFiltersRequest}
         />
 
         {chatContent && (
