@@ -304,6 +304,14 @@ export const DeckGLHeatmap = ({
 
   const pendingGuiClearFiltersWorkflowRef = useRef(false);
 
+  const pendingGuiRemoveFiltersWorkflowRef = useRef<Array<{
+    axis: 'row' | 'col';
+    type: string;
+    field?: string;
+    value?: any;
+    top_n?: number;
+  }> | null>(null);
+
   const pendingCropWorkflowRef = useRef<{
     label: string;
     parameters: Record<string, any>;
@@ -469,6 +477,19 @@ export const DeckGLHeatmap = ({
   const handleGuiClearFiltersRequest = () => {
     saveUndoPoint();
     pendingGuiClearFiltersWorkflowRef.current = true;
+  };
+
+  const handleGuiRemoveFiltersRequest = (
+    removedFilters: Array<{
+      axis: 'row' | 'col';
+      type: string;
+      field?: string;
+      value?: any;
+      top_n?: number;
+    }>
+  ) => {
+    saveUndoPoint();
+    pendingGuiRemoveFiltersWorkflowRef.current = removedFilters;
   };
 
   const normalizeWorkflowTarget = (
@@ -1837,6 +1858,7 @@ export const DeckGLHeatmap = ({
           });
 
           pendingGuiClearFiltersWorkflowRef.current = false;
+          pendingGuiRemoveFiltersWorkflowRef.current = null;
           return;
         }
 
@@ -1875,10 +1897,42 @@ export const DeckGLHeatmap = ({
               });
             }
 
+            const removedFilters =
+              pendingGuiRemoveFiltersWorkflowRef.current;
+
+            if (removedFilters && removedFilters.length > 0) {
+              pendingGuiRemoveFiltersWorkflowRef.current = null;
+
+              const removedAxes = new Set(
+                removedFilters.map(filter => filter.axis)
+              );
+
+              const target =
+                removedAxes.size > 1
+                  ? 'both'
+                  : removedAxes.has('row')
+                    ? 'rows'
+                    : 'columns';
+
+              recordWorkflowAction({
+                type: 'remove_filters',
+                source: 'gui',
+                label:
+                  removedFilters.length === 1
+                    ? 'Remove 1 Filter'
+                    : `Remove ${removedFilters.length} Filters`,
+                target,
+                parameters: {
+                  filters: removedFilters
+                }
+              });
+            }
+
             onSuccess?.();
 
           } catch (err) {
             pendingGuiClearFiltersWorkflowRef.current = false;
+            pendingGuiRemoveFiltersWorkflowRef.current = null;
             console.error("❌ Error processing clustering result:", err);
 
             addNotification({
@@ -1889,10 +1943,12 @@ export const DeckGLHeatmap = ({
           }
         } else {
           pendingGuiClearFiltersWorkflowRef.current = false;
+          pendingGuiRemoveFiltersWorkflowRef.current = null;
         }
       })
       .catch((err) => {
         pendingGuiClearFiltersWorkflowRef.current = false;
+        pendingGuiRemoveFiltersWorkflowRef.current = null;
         console.error("❌ Network error refreshing heatmap:", err);
 
         addNotification({
@@ -3588,6 +3644,7 @@ export const DeckGLHeatmap = ({
           onGuiClusterRequest={handleGuiClusterRequest}
           onGuiSortRequest={handleGuiSortRequest}
           onGuiClearFiltersRequest={handleGuiClearFiltersRequest}
+          onGuiRemoveFiltersRequest={handleGuiRemoveFiltersRequest}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}

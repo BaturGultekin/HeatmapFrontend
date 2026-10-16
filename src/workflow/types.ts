@@ -16,6 +16,7 @@ export type WorkflowActionType =
     | 'filter'
     | 'inverse_filter'
     | 'variance_filter'
+    | 'remove_filters'
     | 'clear_filters'
     | 'zscore'
     | 'rezscore_filtered_subset'
