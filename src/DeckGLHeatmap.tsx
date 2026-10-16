@@ -290,6 +290,11 @@ export const DeckGLHeatmap = ({
     method: string;
   } | null>(null);
 
+  const pendingGuiMetadataSortWorkflowRef = useRef<{
+    target: 'rows' | 'columns';
+    field: string;
+  } | null>(null);
+
   const pendingCropWorkflowRef = useRef<{
     label: string;
     parameters: Record<string, any>;
@@ -2266,6 +2271,48 @@ export const DeckGLHeatmap = ({
             });
           }
         }
+
+        const pendingMetadataSort =
+          pendingGuiMetadataSortWorkflowRef.current;
+
+        if (pendingMetadataSort) {
+          const metadataSortChangeSucceeded =
+            pendingMetadataSort.target === 'rows'
+              ? (
+                order.sortByRowCat === pendingMetadataSort.field &&
+                (
+                  order.sortByRowCat !== previousOrder.sortByRowCat ||
+                  order.sortColsByRowName !== previousOrder.sortColsByRowName
+                )
+              )
+              : (
+                order.sortByColCat === pendingMetadataSort.field &&
+                (
+                  order.sortByColCat !== previousOrder.sortByColCat ||
+                  order.sortColsByRowName !== previousOrder.sortColsByRowName
+                )
+              );
+
+          if (metadataSortChangeSucceeded) {
+            pendingGuiMetadataSortWorkflowRef.current = null;
+
+            const targetLabel =
+              pendingMetadataSort.target === 'rows'
+                ? 'Rows'
+                : 'Columns';
+
+            recordWorkflowAction({
+              type: 'sort_by_metadata',
+              source: 'gui',
+              label:
+                `Sort ${targetLabel} by metadata: ${pendingMetadataSort.field}`,
+              target: pendingMetadataSort.target,
+              parameters: {
+                field: pendingMetadataSort.field
+              }
+            });
+          }
+        }
       }
     };
 
@@ -2273,6 +2320,7 @@ export const DeckGLHeatmap = ({
       pendingCropWorkflowRef.current = null;
       pendingGuiClusterWorkflowRef.current = null;
       pendingGuiSortWorkflowRef.current = null;
+      pendingGuiMetadataSortWorkflowRef.current = null;
       pendingClearCropWorkflowRef.current = false;
 
       console.error("Worker error:", error);
@@ -2315,6 +2363,7 @@ export const DeckGLHeatmap = ({
         pendingCropWorkflowRef.current = null;
         pendingGuiClusterWorkflowRef.current = null;
         pendingGuiSortWorkflowRef.current = null;
+        pendingGuiMetadataSortWorkflowRef.current = null;
         pendingClearCropWorkflowRef.current = false;
 
         console.error("Failed to send data to worker:", error);
@@ -2383,6 +2432,29 @@ export const DeckGLHeatmap = ({
           const catName = visualOrder.colCat[i];
 
           label.addEventListener('click', () => {
+            const target =
+              matrixOrientation === 'Transposed'
+                ? 'rows'
+                : 'columns';
+
+            const currentField =
+              target === 'rows'
+                ? order.sortByRowCat
+                : order.sortByColCat;
+
+            const willChange =
+              currentField !== catName ||
+              order.sortColsByRowName !== null;
+
+            if (!willChange) return;
+
+            saveUndoPoint();
+
+            pendingGuiMetadataSortWorkflowRef.current = {
+              target,
+              field: catName
+            };
+
             if (matrixOrientation === 'Transposed') {
               setOrder((prevOrder: any) => ({
                 ...prevOrder,
@@ -2392,7 +2464,8 @@ export const DeckGLHeatmap = ({
             } else {
               setOrder((prevOrder: any) => ({
                 ...prevOrder,
-                sortByColCat: catName
+                sortByColCat: catName,
+                sortColsByRowName: null
               }));
             }
           });
@@ -2437,6 +2510,29 @@ export const DeckGLHeatmap = ({
         label.textContent = capitalizeFirstLetter(cat);
         if (visualOrder.row !== 'cluster') {
           label.addEventListener('click', () => {
+            const target =
+              matrixOrientation === 'Transposed'
+                ? 'columns'
+                : 'rows';
+
+            const currentField =
+              target === 'rows'
+                ? order.sortByRowCat
+                : order.sortByColCat;
+
+            const willChange =
+              currentField !== cat ||
+              order.sortColsByRowName !== null;
+
+            if (!willChange) return;
+
+            saveUndoPoint();
+
+            pendingGuiMetadataSortWorkflowRef.current = {
+              target,
+              field: cat
+            };
+
             if (matrixOrientation === 'Transposed') {
               setOrder(prev => ({
                 ...prev,
@@ -2451,7 +2547,6 @@ export const DeckGLHeatmap = ({
               }));
             }
           });
-
         }
         label.style.fontSize = `${CATEGORY_LAYER_HEIGHT}px`;
         label.style.fontFamily = 'Arial, sans-serif';
