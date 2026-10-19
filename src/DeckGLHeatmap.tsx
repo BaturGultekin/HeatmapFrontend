@@ -36,7 +36,8 @@ import {
   WorkflowTarget,
   appendWorkflowAction,
   createEmptyWorkflowHistory,
-  createWorkflowAction
+  createWorkflowAction,
+  getActiveWorkflowActions
 } from './workflow';
 
 // NOTE: center of the screen is 0, 0,
@@ -165,7 +166,8 @@ export const DeckGLHeatmap = ({
   addNotification,
   pvalData,
   onStatsUpdate,
-  sidebarTopContent
+  sidebarTopContent,
+  homepage
 }: DeckGLHeatmapProps) => {
 
 
@@ -337,10 +339,15 @@ export const DeckGLHeatmap = ({
     col: []
   });
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
+
   const [workflowHistory, setWorkflowHistory] =
     useState<WorkflowHistoryState>(
       () => createEmptyWorkflowHistory()
     );
+
+  const activeWorkflowActions =
+    getActiveWorkflowActions(workflowHistory);
+
   const MAX_HISTORY = 20;
 
   useEffect(() => {
@@ -3645,11 +3652,13 @@ export const DeckGLHeatmap = ({
           onGuiSortRequest={handleGuiSortRequest}
           onGuiClearFiltersRequest={handleGuiClearFiltersRequest}
           onGuiRemoveFiltersRequest={handleGuiRemoveFiltersRequest}
+          activeWorkflowActions={activeWorkflowActions}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}
           canRedo={canRedo}
           sidebarTopContent={sidebarTopContent}
+          homepage={homepage}
           chatContent={(
             onCommandRun,
             onSuggestionsClose,

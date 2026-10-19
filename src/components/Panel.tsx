@@ -4,6 +4,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DownloadIcon from '@mui/icons-material/Download';
 import MenuIcon from '@mui/icons-material/Menu';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import CropIcon from '@mui/icons-material/Crop';
 import { Tooltip, ToggleButton, ToggleButtonGroup, Button, Box, Switch } from '@mui/material';
 import Divider from '@mui/material/Divider';
@@ -16,6 +17,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type {
   DataStateShape
 } from '../types';
+import {
+  WORKFLOW_FORMAT,
+  WORKFLOW_SCHEMA_VERSION,
+  type WorkflowAction,
+  type WorkflowRecipe
+} from '../workflow';
 import { order } from '../types';
 import MultiSelect from './CustomMultiSelect';
 import ListComponent from './ListComponent';
@@ -314,12 +321,14 @@ export default function PersistentDrawerLeft({
   zScoreAxis,
   onReZscoreToggle,
   onZScoreAxisChange,
+  activeWorkflowActions,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
   chatContent,
   sidebarTopContent,
+  homepage,
   colMetadataValues = {}
 }: {
   parentContainerRef: HTMLDivElement;
@@ -381,6 +390,7 @@ export default function PersistentDrawerLeft({
       top_n?: number;
     }>
   ) => void;
+  activeWorkflowActions: WorkflowAction[];
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -393,12 +403,42 @@ export default function PersistentDrawerLeft({
   ) => React.ReactNode;
   colMetadataValues?: Record<string, string[]>;
   sidebarTopContent?: React.ReactNode;
+  homepage: boolean;
 }) {
   const [isDrawerOpen, setDrawerOpen] = useState(true);
   const [isAIExpanded, setIsAIExpanded] = useState(false);
+  const [isTrackChangesExpanded, setIsTrackChangesExpanded] = useState(false);
   const [isMetadataGuideOpen, setIsMetadataGuideOpen] = useState(false);
   const [pendingGuideCommand, setPendingGuideCommand] = useState<string | null>(null);
   const aiPanelRef = React.useRef<HTMLDivElement>(null);
+
+  const handleDownloadWorkflow = () => {
+    const recipe: WorkflowRecipe = {
+      format: WORKFLOW_FORMAT,
+      schemaVersion: WORKFLOW_SCHEMA_VERSION,
+      createdAt: new Date().toISOString(),
+      actions: activeWorkflowActions
+    };
+
+    const blob = new Blob(
+      [JSON.stringify(recipe, null, 2)],
+      { type: 'application/json' }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = `clusterchirp-workflow-${new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  };
 
   /* Keep drawer independent from heatmap height */
   const drawerHostRef = React.useRef<HTMLDivElement>(null);
@@ -800,9 +840,84 @@ export default function PersistentDrawerLeft({
         anchor="left"
         open={isDrawerOpen}
       >
-        {sidebarTopContent}
+        {homepage ? (
+          sidebarTopContent
+        ) : (
+          <Box
+            sx={{
+              padding: '8px 10px 6px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              gap: '6px',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => {
+                setIsAIExpanded(false);
+                setIsTrackChangesExpanded(true);
+              }}
+              sx={{
+                height: '30px',
+                minWidth: 0,
+                padding: '2px 6px',
+                fontSize: '10px',
+                fontWeight: 600,
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Track Changes
+            </Button>
+
+            <Button
+              variant="outlined"
+              fullWidth
+              disabled
+              sx={{
+                height: '30px',
+                minWidth: 0,
+                padding: '2px 6px',
+                fontSize: '10px',
+                fontWeight: 600,
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Upload Workflow
+            </Button>
+          </Box>
+        )}
 
         <DrawerHeader>
+          <Tooltip
+            title="Track Changes"
+            slotProps={{
+              popper: {
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: [0, -14],
+                    },
+                  },
+                ],
+              },
+            }}
+          >
+            <IconButton
+              onClick={() => {
+                setIsAIExpanded(false);
+                setIsTrackChangesExpanded(true);
+              }}
+            >
+              <TrackChangesIcon />
+            </IconButton>
+          </Tooltip>
+
           <Tooltip
             title="Take snapshot"
             slotProps={{
@@ -1293,6 +1408,187 @@ export default function PersistentDrawerLeft({
           onGuiClearFiltersRequest={onGuiClearFiltersRequest}
           onGuiRemoveFiltersRequest={onGuiRemoveFiltersRequest}
         />
+
+        {isTrackChangesExpanded && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: 1600,
+              backgroundColor: '#ffffff',
+              boxSizing: 'border-box',
+              padding: '16px 10px',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+            }}
+          >
+            <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsTrackChangesExpanded(false);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '8px',
+                cursor: 'pointer',
+                width: 'fit-content',
+                color: SIDEBAR_COLORS.text,
+
+                '&:hover': {
+                  color: SIDEBAR_COLORS.primary,
+                },
+              }}
+            >
+              <IconButton
+                size="small"
+                aria-label="Back to controls"
+                sx={{
+                  pointerEvents: 'none',
+                  color: 'inherit',
+                }}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+
+              <span
+                style={{
+                  fontFamily: SIDEBAR_FONT,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: 'inherit',
+                }}
+              >
+                Back to controls
+              </span>
+            </Box>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: '6px',
+                marginTop: '-6px',
+                marginBottom: '10px'
+              }}
+            >
+              <Button
+                size="small"
+                variant="outlined"
+                fullWidth
+                disabled={!canUndo}
+                onClick={onUndo}
+                sx={{
+                  ...sidebarControlText,
+                  height: '32px',
+                  color: SIDEBAR_COLORS.primary,
+                  borderColor: SIDEBAR_COLORS.border,
+
+                  '&:hover': {
+                    borderColor: SIDEBAR_COLORS.primary,
+                    backgroundColor: '#e3f2fd',
+                  },
+
+                  '&.Mui-disabled': {
+                    color: SIDEBAR_COLORS.disabled,
+                    borderColor: '#e0e0e0',
+                  },
+                }}
+              >
+                Undo ↺
+              </Button>
+
+              <Button
+                size="small"
+                variant="outlined"
+                fullWidth
+                disabled={!canRedo}
+                onClick={onRedo}
+                sx={{
+                  ...sidebarControlText,
+                  height: '32px',
+                  color: SIDEBAR_COLORS.primary,
+                  borderColor: SIDEBAR_COLORS.border,
+
+                  '&:hover': {
+                    borderColor: SIDEBAR_COLORS.primary,
+                    backgroundColor: '#e3f2fd',
+                  },
+
+                  '&.Mui-disabled': {
+                    color: SIDEBAR_COLORS.disabled,
+                    borderColor: '#e0e0e0',
+                  },
+                }}
+              >
+                Redo ↻
+              </Button>
+            </div>
+
+            <Button
+              size="small"
+              variant="contained"
+              fullWidth
+              disabled={activeWorkflowActions.length === 0}
+              onClick={handleDownloadWorkflow}
+              sx={{
+                ...sidebarControlText,
+                height: '32px',
+                marginBottom: '10px',
+                textTransform: 'none',
+              }}
+            >
+              Download Workflow
+            </Button>
+
+            <div
+              style={{
+                ...sidebarSectionLabelStyle,
+                marginTop: '4px',
+                marginBottom: '8px',
+              }}
+            >
+              Track Changes
+            </div>
+
+            {activeWorkflowActions.length === 0 ? (
+              <div
+                style={{
+                  fontFamily: SIDEBAR_FONT,
+                  fontSize: '12px',
+                  color: SIDEBAR_COLORS.text,
+                }}
+              >
+                No changes yet
+              </div>
+            ) : (
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: '22px',
+                }}
+              >
+                {activeWorkflowActions.map(action => (
+                  <li
+                    key={action.id}
+                    style={{
+                      fontFamily: SIDEBAR_FONT,
+                      fontSize: '12px',
+                      color: SIDEBAR_COLORS.text,
+                      marginBottom: '6px',
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {action.label}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+
         {chatContent && (
           <div
             ref={aiPanelRef}

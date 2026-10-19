@@ -551,6 +551,7 @@ const HeatmapWrapper: React.FC<HeatmapWrapperProps> = ({
               addNotification={addNotification}
               onStatsUpdate={onStatsUpdate}
               sidebarTopContent={sidebarTopContent}
+              homepage={homepage}
             />
           ) : (
             !showStrategySelection && (
