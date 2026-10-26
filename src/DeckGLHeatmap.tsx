@@ -23,13 +23,17 @@ import { CATEGORY_LAYER_HEIGHT, CLUSTER_LAYER_HEIGHT, CLUSTER_LAYER_GAP } from "
 import { createDataWorker } from './utils/workerFactory';
 import { dataWorkerCode } from './workers/data-worker-string';
 import HeatmapMinimap from './Heatmapminimap';
-import { getRefreshHeatmap } from './backendApi/heatmapData'
+import {
+  getRefreshHeatmap,
+  processWorkflowAction
+} from './backendApi/heatmapData'
 import ChatBox from './components/ChatBox';
 import ToastNotification from './components/ToastNotification';
 import { OperatorNodeDependencies } from 'mathjs';
 import { usePrevious } from './hooks/usePrevious';
 import PathwaySelector from './components/PathwaySelector';
 import {
+  WorkflowAction,
   WorkflowActionType,
   WorkflowHistoryState,
   WorkflowSource,
@@ -312,6 +316,10 @@ export const DeckGLHeatmap = ({
     field?: string;
     value?: any;
     top_n?: number;
+    criteria?: Array<{
+      field: string;
+      value: any;
+    }>;
   }> | null>(null);
 
   const pendingCropWorkflowRef = useRef<{
@@ -320,6 +328,24 @@ export const DeckGLHeatmap = ({
   } | null>(null);
 
   const pendingClearCropWorkflowRef = useRef(false);
+
+  const pendingImportedWorkflowReplayRef = useRef<{
+    actions: WorkflowAction[];
+    preImportSnapshot: AnalysisSnapshot;
+    baselineDataStateVersion: number;
+    phase:
+    | 'waiting_for_baseline'
+    | 'running_action'
+    | 'ready_for_next_action'
+    | 'completed'
+    | 'failed';
+    index: number;
+  } | null>(null);
+
+  const [
+    isImportedWorkflowRunning,
+    setIsImportedWorkflowRunning
+  ] = useState(false);
 
   // Two separate lightweight version counters
   const [datastateVersion, setDataStateVersion] = useState(0);
@@ -481,6 +507,1374 @@ export const DeckGLHeatmap = ({
     };
   };
 
+  const resetAnalysisForImportedWorkflow = () => {
+    setMatrixOrientation('Original');
+
+    setZScoreAxis('row');
+    setReZscoreFilteredSubset(false);
+
+    const baselineRowCategories =
+      data?.cat_colors?.row
+        ? Object.keys(data.cat_colors.row)
+          .map(key => {
+            const categoryEntry =
+              data.cat_colors.row[key];
+
+            return Object.keys(categoryEntry ?? {})[0]
+              ?.split(':')[0]
+              ?.trim();
+          })
+          .filter(
+            (value): value is string =>
+              typeof value === 'string' &&
+              value.length > 0
+          )
+          .slice(0, MAX_CATEGORIES)
+        : [];
+
+    const baselineColumnCategories =
+      data?.cat_colors?.col
+        ? Object.keys(data.cat_colors.col)
+          .map(key => {
+            const categoryEntry =
+              data.cat_colors.col[key];
+
+            return Object.keys(categoryEntry ?? {})[0]
+              ?.split(':')[0]
+              ?.trim();
+          })
+          .filter(
+            (value): value is string =>
+              typeof value === 'string' &&
+              value.length > 0
+          )
+          .slice(0, MAX_CATEGORIES)
+        : [];
+
+    setOrder({
+      row: 'alphabetically',
+      col: 'alphabetically',
+      rowCat: baselineRowCategories,
+      sortByRowCat: '',
+      colCat: baselineColumnCategories,
+      sortByColCat: '',
+      sortColsByRowName: null
+    });
+
+    setFilters({
+      row: [],
+      col: []
+    });
+
+    filteredData.current = null;
+
+    setFilteredIdxDict(null);
+    setCropBox(null);
+    setCroppedRowIndices(null);
+    setCroppedColIndices(null);
+    setIsCropping(false);
+    setIsDrawing(false);
+
+    setDataVersion(prev => prev + 1);
+  };
+
+  const failImportedWorkflowReplay = (
+    replay: NonNullable<
+      typeof pendingImportedWorkflowReplayRef.current
+    >
+  ) => {
+    replay.phase = 'failed';
+    setIsImportedWorkflowRunning(false);
+
+    restoreAnalysisSnapshot(
+      replay.preImportSnapshot
+    );
+
+    setToastMessage(
+      'Imported workflow failed. Your previous analysis was restored.'
+    );
+    setToastSeverity('error');
+    setToastOpen(true);
+  };
+
+  const handleRunImportedWorkflow = (
+    actions: WorkflowAction[]
+  ) => {
+    if (actions.length === 0) {
+      return;
+    }
+
+    const existingReplay =
+      pendingImportedWorkflowReplayRef.current;
+
+    if (
+      existingReplay?.phase === 'waiting_for_baseline' ||
+      existingReplay?.phase === 'running_action' ||
+      existingReplay?.phase === 'ready_for_next_action'
+    ) {
+      console.warn(
+        '⚠️ IMPORTED WORKFLOW REPLAY ALREADY RUNNING'
+      );
+      return;
+    }
+
+    setIsImportedWorkflowRunning(true);
+
+    pendingImportedWorkflowReplayRef.current = {
+      actions: [...actions],
+      preImportSnapshot: createAnalysisSnapshot(),
+      baselineDataStateVersion: datastateVersion + 1,
+      phase: 'waiting_for_baseline',
+      index: 0
+    };
+
+    console.log(
+      '🧼 IMPORTED WORKFLOW RESETTING TO BASELINE',
+      actions
+    );
+
+    resetAnalysisForImportedWorkflow();
+  };
+
+  const executeImportedWorkflowAction = (
+    action: WorkflowAction
+  ): boolean => {
+    if (action.type === 'zscore') {
+      const axis =
+        action.parameters.axis as ZScoreAxis;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setZScoreAxis(axis);
+
+      handleRenderHeatmap(
+        filters,
+        {
+          axis,
+          reZscoreFilteredSubset
+        },
+        () => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          replay.index += 1;
+          replay.phase = 'ready_for_next_action';
+
+          console.log(
+            '✅ IMPORTED ACTION COMPLETED',
+            action
+          );
+
+          console.log(
+            '⏭️ NEXT IMPORTED ACTION INDEX',
+            replay.index
+          );
+        }
+      );
+
+      return true;
+    }
+
+    if (action.type === 'rezscore_filtered_subset') {
+      const enabled =
+        action.parameters.enabled as boolean;
+
+      const axis =
+        action.parameters.axis as ZScoreAxis;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setReZscoreFilteredSubset(enabled);
+
+      handleRenderHeatmap(
+        filters,
+        {
+          axis,
+          reZscoreFilteredSubset: enabled
+        },
+        () => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          replay.index += 1;
+          replay.phase = 'ready_for_next_action';
+
+          console.log(
+            '✅ IMPORTED ACTION COMPLETED',
+            action
+          );
+
+          console.log(
+            '⏭️ NEXT IMPORTED ACTION INDEX',
+            replay.index
+          );
+        }
+      );
+
+      return true;
+    }
+
+    if (action.type === 'set_distance') {
+      const distance =
+        action.parameters.distance as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'set_distance',
+          parameters: {
+            distance
+          }
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'set_linkage') {
+      const linkage =
+        action.parameters.linkage as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'set_linkage',
+          parameters: {
+            linkage
+          }
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'set_clustering') {
+      const distance =
+        action.parameters.distance as string;
+
+      const linkage =
+        action.parameters.linkage as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'set_clustering',
+          parameters: {
+            distance,
+            linkage
+          }
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'filter') {
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'filter',
+          target: action.target,
+          parameters: action.parameters
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'inverse_filter') {
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'inverse_filter',
+          target: action.target,
+          parameters: action.parameters
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'clear_filters') {
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'clear_filters',
+          target: action.target,
+          parameters: action.parameters
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'variance_filter') {
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      void processWorkflowAction(
+        sessionID,
+        {
+          type: 'variance_filter',
+          target: action.target,
+          parameters: action.parameters
+        },
+        {
+          filters,
+          commandHistory,
+          transformation: {
+            axis: zScoreAxis,
+            reZscoreFilteredSubset
+          }
+        }
+      )
+        .then((res) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            !replay ||
+            replay.phase !== 'running_action'
+          ) {
+            return;
+          }
+
+          if (
+            res?.error ||
+            !res?.clustering_result
+          ) {
+            failImportedWorkflowReplay(replay);
+
+            console.error(
+              '❌ IMPORTED WORKFLOW REPLAY FAILED',
+              {
+                index: replay.index,
+                action,
+                error: res?.error
+              }
+            );
+
+            return;
+          }
+
+          const parsedResult =
+            typeof res.clustering_result === 'string'
+              ? JSON.parse(res.clustering_result)
+              : res.clustering_result;
+
+          if (res.updated_filters) {
+            setFilters(res.updated_filters);
+          }
+
+          filteredData.current = parsedResult;
+
+          const renderedRowCount =
+            parsedResult?.row_nodes?.length ?? 0;
+
+          const renderedColCount =
+            parsedResult?.col_nodes?.length ?? 0;
+
+          setOrder(prev => ({
+            ...prev,
+            row:
+              renderedRowCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            col:
+              renderedColCount > 1
+                ? 'cluster'
+                : 'alphabetically',
+            sortByRowCat: '',
+            sortByColCat: '',
+            sortColsByRowName: null
+          }));
+
+          setDataVersion(prev => prev + 1);
+        })
+        .catch((error) => {
+          const replay =
+            pendingImportedWorkflowReplayRef.current;
+
+          if (
+            replay &&
+            replay.phase === 'running_action'
+          ) {
+            failImportedWorkflowReplay(replay);
+          }
+
+          console.error(
+            '❌ IMPORTED WORKFLOW REPLAY FAILED',
+            {
+              index: replay?.index,
+              action,
+              error
+            }
+          );
+        });
+
+      return true;
+    }
+
+    if (action.type === 'remove_filters') {
+      const filtersToRemove =
+        action.parameters.filters as Array<{
+          axis: 'row' | 'col';
+          [key: string]: any;
+        }>;
+
+      const nextFilters = {
+        row: [...(filters?.row ?? [])],
+        col: [...(filters?.col ?? [])]
+      };
+
+      for (const descriptor of filtersToRemove) {
+        const { axis, ...filterToRemove } = descriptor;
+
+        const matchIndex =
+          nextFilters[axis].findIndex(
+            candidate =>
+              JSON.stringify(candidate) ===
+              JSON.stringify(filterToRemove)
+          );
+
+        if (matchIndex < 0) {
+          console.error(
+            '❌ IMPORTED REMOVE_FILTERS MATCH FAILED',
+            descriptor
+          );
+
+          return false;
+        }
+
+        nextFilters[axis].splice(matchIndex, 1);
+      }
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setFilters(nextFilters);
+      handleRenderHeatmap(nextFilters);
+
+      return true;
+    }
+
+    if (action.type === 'crop') {
+      const rowIndices =
+        action.parameters.rowIndices as number[];
+
+      const columnIndices =
+        action.parameters.columnIndices as number[];
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      // Prevent any in-progress GUI crop box from interfering.
+      setCropBox(null);
+
+      // Workflow crop indices are stored in canonical matrix space.
+      setCroppedRowIndices([...rowIndices]);
+      setCroppedColIndices([...columnIndices]);
+
+      // The worker recomputes DataState when the canonical crop
+      // index arrays change.
+      resetViewToOrigin();
+
+      return true;
+    }
+
+    if (action.type === 'clear_crop') {
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setFilteredIdxDict(null);
+      setCropBox(null);
+      setIsCropping(false);
+      setIsDrawing(false);
+
+      // Clearing the canonical crop indices triggers the worker
+      // to rebuild the full matrix.
+      setCroppedRowIndices(null);
+      setCroppedColIndices(null);
+
+      resetViewToOrigin();
+
+      return true;
+    }
+
+    if (action.type === 'sort_by_metadata') {
+      const field =
+        action.parameters.field as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setOrder(prev => {
+        if (action.target === 'rows') {
+          return {
+            ...prev,
+            sortByRowCat: field,
+            sortColsByRowName: null
+          };
+        }
+
+        return {
+          ...prev,
+          sortByColCat: field,
+          sortColsByRowName: null
+        };
+      });
+
+      return true;
+    }
+
+    if (action.type === 'sort_by_expression') {
+      const feature =
+        action.parameters.feature as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setOrder(prev => ({
+        ...prev,
+        col: '',
+        sortByColCat: '',
+        sortColsByRowName: feature
+      }));
+
+      return true;
+    }
+
+    if (action.type === 'transpose') {
+      const orientation =
+        action.parameters.orientation as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setMatrixOrientation(orientation);
+
+      return true;
+    }
+
+    if (action.type === 'sort') {
+      const method =
+        action.parameters.method as string;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setOrder(prev => {
+        if (action.target === 'rows') {
+          return {
+            ...prev,
+            row: method,
+            sortByRowCat: '',
+            sortColsByRowName: null
+          };
+        }
+
+        if (action.target === 'columns') {
+          return {
+            ...prev,
+            col: method,
+            sortByColCat: '',
+            sortColsByRowName: null
+          };
+        }
+
+        return {
+          ...prev,
+          row: method,
+          col: method,
+          sortByRowCat: '',
+          sortByColCat: '',
+          sortColsByRowName: null
+        };
+      });
+
+      return true;
+    }
+
+    if (action.type === 'cluster') {
+      const target = action.parameters.target;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      if (target === 'rows') {
+        setOrder(prev => ({
+          ...prev,
+          row: 'cluster',
+          sortByRowCat: '',
+          sortColsByRowName: null
+        }));
+
+        return true;
+      }
+
+      if (target === 'columns') {
+        setOrder(prev => ({
+          ...prev,
+          col: 'cluster',
+          sortByColCat: '',
+          sortColsByRowName: null
+        }));
+
+        return true;
+      }
+
+      if (target === 'both') {
+        setOrder(prev => ({
+          ...prev,
+          row: 'cluster',
+          col: 'cluster',
+          sortByRowCat: '',
+          sortByColCat: '',
+          sortColsByRowName: null
+        }));
+
+        return true;
+      }
+
+      return false;
+    }
+
+    console.warn(
+      '⏸️ IMPORTED REPLAY ACTION NOT IMPLEMENTED YET',
+      action
+    );
+
+    return false;
+  };
+
+  useEffect(() => {
+    const replay =
+      pendingImportedWorkflowReplayRef.current;
+
+    if (!replay) {
+      return;
+    }
+
+    if (replay.phase === 'waiting_for_baseline') {
+      if (
+        datastateVersion <
+        replay.baselineDataStateVersion
+      ) {
+        return;
+      }
+
+      console.log(
+        '✅ IMPORTED WORKFLOW BASELINE READY',
+        replay.actions
+      );
+
+      const firstAction =
+        replay.actions[replay.index];
+
+      if (!firstAction) {
+        return;
+      }
+
+      replay.phase = 'running_action';
+
+      const started =
+        executeImportedWorkflowAction(firstAction);
+
+      if (!started) {
+        failImportedWorkflowReplay(replay);
+
+        console.error(
+          '❌ IMPORTED WORKFLOW REPLAY FAILED',
+          {
+            index: replay.index,
+            action: firstAction
+          }
+        );
+      }
+
+      return;
+    }
+
+    if (
+      replay.phase === 'ready_for_next_action' &&
+      replay.index >= replay.actions.length
+    ) {
+      replay.phase = 'completed';
+      setIsImportedWorkflowRunning(false);
+
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      setHistoryVersion(prev => prev + 1);
+
+      const importedActions = replay.actions.map(
+        action => ({
+          ...action,
+          source: 'imported' as const
+        })
+      );
+
+      setWorkflowHistory({
+        actions: importedActions,
+        cursor: importedActions.length
+      });
+
+      console.log(
+        '🏁 IMPORTED WORKFLOW COMPLETED',
+        {
+          totalActions: replay.actions.length
+        }
+      );
+
+      return;
+    }
+
+    /*
+     * Advance to the next imported workflow action.
+     */
+    if (
+      replay.phase === 'ready_for_next_action' &&
+      replay.index < replay.actions.length
+    ) {
+      const nextAction =
+        replay.actions[replay.index];
+
+      if (!nextAction) {
+        return;
+      }
+
+      replay.phase = 'running_action';
+
+      const started =
+        executeImportedWorkflowAction(nextAction);
+
+      if (!started) {
+        failImportedWorkflowReplay(replay);
+
+        console.error(
+          '❌ IMPORTED WORKFLOW REPLAY FAILED',
+          {
+            index: replay.index,
+            action: nextAction
+          }
+        );
+      }
+    }
+  }, [datastateVersion]);
+
   const handleGuiClearFiltersRequest = () => {
     saveUndoPoint();
     pendingGuiClearFiltersWorkflowRef.current = true;
@@ -493,6 +1887,10 @@ export const DeckGLHeatmap = ({
       field?: string;
       value?: any;
       top_n?: number;
+      criteria?: Array<{
+        field: string;
+        value: any;
+      }>;
     }>
   ) => {
     saveUndoPoint();
@@ -679,12 +2077,17 @@ export const DeckGLHeatmap = ({
   const previousOrder = usePrevious(order);
   tooltipFunction = generateTooltipContent
 
+  const clickableClusterId =
+    matrixOrientation === 'Transposed'
+      ? 'col-cluster'
+      : 'row-cluster';
+
 
   const stableOnClick = useMemo(() => ({
     heatmapCell: (info: any, event: any) => {
       // Handle internal logic first
       // Check if clicking on a cluster (only row not col)
-      if (info?.object?.id === "row-cluster") {
+      if (info?.object?.id === clickableClusterId) {
         console.log('Cluster clicked:', info.object);
         setClickedClusterData({
           Nodes: info.object.nodes,
@@ -748,7 +2151,44 @@ export const DeckGLHeatmap = ({
       // Then, call the handler passed from the parent if it exists
       onClick?.rowLabel?.(info, event);
     },
-    columnLabel: onClick?.columnLabel,
+    columnLabel: (info: any, event: any) => {
+      // In Transposed view, visible column labels are original row features.
+      // Clicking one should sort the original columns/samples by that feature.
+      if (
+        matrixOrientation === 'Transposed' &&
+        info?.index !== undefined &&
+        dataStateRef.current?.colLabels
+      ) {
+        const rowName =
+          dataStateRef.current.colLabels[info.index]?.text;
+
+        if (rowName) {
+          const currentOrder = orderRef.current;
+
+          const willChange =
+            currentOrder.col !== "" ||
+            currentOrder.sortByColCat !== "" ||
+            currentOrder.sortColsByRowName !== rowName;
+
+          if (willChange) {
+            saveUndoPointRef.current();
+
+            pendingGuiExpressionSortWorkflowRef.current = {
+              feature: rowName
+            };
+
+            setOrder((prev) => ({
+              ...prev,
+              col: "",
+              sortByColCat: "",
+              sortColsByRowName: rowName
+            }));
+          }
+        }
+      }
+
+      onClick?.columnLabel?.(info, event);
+    },
   }), [onClick, filters, matrixOrientation]); // This now correctly depends on the prop from the parent and filters.
 
 
@@ -1181,7 +2621,7 @@ export const DeckGLHeatmap = ({
               criterion =>
                 `${criterion.field} = ${String(criterion.value)}`
             )
-            .join(' AND ');
+            .join(' OR ');
 
         recordWorkflowAction({
           type: 'inverse_filter',
@@ -1189,7 +2629,7 @@ export const DeckGLHeatmap = ({
           label: `Exclude ${criteriaLabel}`,
           target: 'columns',
           parameters: {
-            mode: 'all',
+            mode: 'any',
             criteria: excludeCriteria
           }
         });
@@ -1598,6 +3038,16 @@ export const DeckGLHeatmap = ({
   const rowMetadataValues = getMetadataValues(
     activeData?.cat_colors?.row
   );
+
+  const workflowBaselineColMetadataValues =
+    getMetadataValues(
+      data?.cat_colors?.col
+    );
+
+  const workflowBaselineRowMetadataValues =
+    getMetadataValues(
+      data?.cat_colors?.row
+    );
 
   let rowCats: Record<string, string> = {};
   let colCats: Record<string, string> = {};
@@ -2246,6 +3696,50 @@ export const DeckGLHeatmap = ({
         setDataStateVersion(prev => prev + 1);
         wasDataUpdated = true;
 
+        const importedReplay =
+          pendingImportedWorkflowReplayRef.current;
+
+        if (
+          importedReplay?.phase === 'running_action'
+        ) {
+          const currentImportedAction =
+            importedReplay.actions[
+            importedReplay.index
+            ];
+
+          if (
+            currentImportedAction?.type === 'sort_by_metadata' ||
+            currentImportedAction?.type === 'sort_by_expression' ||
+            currentImportedAction?.type === 'transpose' ||
+            currentImportedAction?.type === 'sort' ||
+            currentImportedAction?.type === 'cluster' ||
+            currentImportedAction?.type === 'set_distance' ||
+            currentImportedAction?.type === 'set_linkage' ||
+            currentImportedAction?.type === 'set_clustering' ||
+            currentImportedAction?.type === 'filter' ||
+            currentImportedAction?.type === 'inverse_filter' ||
+            currentImportedAction?.type === 'clear_filters' ||
+            currentImportedAction?.type === 'variance_filter' ||
+            currentImportedAction?.type === 'remove_filters' ||
+            currentImportedAction?.type === 'crop' ||
+            currentImportedAction?.type === 'clear_crop'
+          ) {
+            importedReplay.index += 1;
+            importedReplay.phase =
+              'ready_for_next_action';
+
+            console.log(
+              '✅ IMPORTED ACTION COMPLETED',
+              currentImportedAction
+            );
+
+            console.log(
+              '⏭️ NEXT IMPORTED ACTION INDEX',
+              importedReplay.index
+            );
+          }
+        }
+
         if (pendingCropWorkflowRef.current) {
           const pendingCrop =
             pendingCropWorkflowRef.current;
@@ -2721,7 +4215,13 @@ export const DeckGLHeatmap = ({
         const catH = CATEGORY_LAYER_HEIGHT;
         const initialGap = INITIAL_GAP;
         const clusterOffset = visualOrder.row === 'cluster' ? (CLUSTER_LAYER_HEIGHT + CLUSTER_LAYER_GAP) : 0;
-        const xPos = panelWidth + rowLabelsWidth - initialGap - clusterOffset - ((i + 1) * (catH + gap)) + catH;
+        const xPos =
+          (isDrawerOpen ? panelWidth : 0) +
+          rowLabelsWidth -
+          initialGap -
+          clusterOffset -
+          ((i + 1) * (catH + gap)) +
+          catH;
         label.style.left = `${xPos}px`;
         if (matrixOrientation === 'Transposed') {
           // Metadata originally belonged to columns and is now displayed vertically.
@@ -3559,7 +5059,7 @@ export const DeckGLHeatmap = ({
         onClick={(event) => {
           const obj = event.object;
           console.log('DeckGL onClick:', obj);
-          if (obj?.id === "row-cluster" || obj?.id === "col-cluster") {
+          if (obj?.id === clickableClusterId) {
             setClickedClusterData({
               Nodes: obj.nodes,
               Group: obj.text,
@@ -3577,8 +5077,14 @@ export const DeckGLHeatmap = ({
               setHovering={setHovering}
               data={clickedClusterData}
               dataType={ID}
-              onShowNetwork={onShowNetwork}
-              onShowPathwayNetwork={onShowPathwayNetwork}
+              onShowNetwork={(networkData: any) => {
+                setIsDrawerOpen(false);
+                onShowNetwork?.(networkData);
+              }}
+              onShowPathwayNetwork={(pathwayData: any) => {
+                setIsDrawerOpen(false);
+                onShowPathwayNetwork?.(pathwayData);
+              }}
             />
           </div>
         )}
@@ -3607,6 +5113,7 @@ export const DeckGLHeatmap = ({
         }}>
         <PersistentDrawerLeft
           parentContainerRef={container}
+          isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
           setOpacityValue={setOpacityValue}
           setOrder={setOrder}
@@ -3617,6 +5124,17 @@ export const DeckGLHeatmap = ({
           panelWidth={panelWidth}
           ID={ID}
           dataState={dataStateRef.current}
+          workflowBaselineRowCount={data?.row_nodes?.length}
+          workflowBaselineColumnCount={data?.col_nodes?.length}
+          workflowBaselineRowFeatures={
+            data?.row_nodes?.map((node: any) => node.name) ?? []
+          }
+          workflowBaselineColMetadataValues={
+            workflowBaselineColMetadataValues
+          }
+          workflowBaselineRowMetadataValues={
+            workflowBaselineRowMetadataValues
+          }
           setState={setValueScale}
           resultCategories={resultCategories}
           setResultCategory={setResultCategory}
@@ -3653,6 +5171,8 @@ export const DeckGLHeatmap = ({
           onGuiClearFiltersRequest={handleGuiClearFiltersRequest}
           onGuiRemoveFiltersRequest={handleGuiRemoveFiltersRequest}
           activeWorkflowActions={activeWorkflowActions}
+          onRunImportedWorkflow={handleRunImportedWorkflow}
+          isImportedWorkflowRunning={isImportedWorkflowRunning}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}

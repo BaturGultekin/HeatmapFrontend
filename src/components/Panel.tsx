@@ -6,7 +6,16 @@ import MenuIcon from '@mui/icons-material/Menu';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import CropIcon from '@mui/icons-material/Crop';
-import { Tooltip, ToggleButton, ToggleButtonGroup, Button, Box, Switch } from '@mui/material';
+import {
+  Tooltip,
+  ToggleButton,
+  ToggleButtonGroup,
+  Button,
+  Box,
+  Switch,
+  Select,
+  MenuItem
+} from '@mui/material';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
@@ -20,7 +29,14 @@ import type {
 import {
   WORKFLOW_FORMAT,
   WORKFLOW_SCHEMA_VERSION,
+  createImportedWorkflowSteps,
+  isValidWorkflowAction,
+  validateWorkflowActionAgainstDataset,
+  buildWorkflowPreflightResult,
+  resolveImportedWorkflowStepParameter,
+  type ImportedWorkflowStep,
   type WorkflowAction,
+  type WorkflowIssue,
   type WorkflowRecipe
 } from '../workflow';
 import { order } from '../types';
@@ -34,6 +50,15 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import MapIcon from '@mui/icons-material/Map'; // If you want to add a toggle button
 import { ORDER_INDEX } from '../const';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import Checkbox from '@mui/material/Checkbox';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import BlockIcon from '@mui/icons-material/Block';
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 
 const orderArray = ['alphabetically', 'cluster', 'sum', 'variance']
 
@@ -48,6 +73,7 @@ const SIDEBAR_COLORS = {
   border: '#d0d0d0',
   background: '#ffffff',
   subtleBackground: '#f8f9fa',
+  chip: '#e3f2fd'
 };
 
 const sidebarSectionLabelStyle: React.CSSProperties = {
@@ -277,6 +303,7 @@ interface CropBox {
 }
 export default function PersistentDrawerLeft({
   parentContainerRef,
+  isDrawerOpen,
   setIsDrawerOpen,
   setOpacityValue,
   setPvalThreshold,
@@ -322,6 +349,8 @@ export default function PersistentDrawerLeft({
   onReZscoreToggle,
   onZScoreAxisChange,
   activeWorkflowActions,
+  onRunImportedWorkflow,
+  isImportedWorkflowRunning = false,
   onUndo,
   onRedo,
   canUndo,
@@ -329,15 +358,27 @@ export default function PersistentDrawerLeft({
   chatContent,
   sidebarTopContent,
   homepage,
-  colMetadataValues = {}
+  workflowBaselineRowCount,
+  workflowBaselineColumnCount,
+  workflowBaselineRowFeatures = [],
+  workflowBaselineColMetadataValues = {},
+  workflowBaselineRowMetadataValues = {},
+  colMetadataValues = {},
+  rowMetadataValues = {}
 }: {
   parentContainerRef: HTMLDivElement;
+  isDrawerOpen: boolean;
   setIsDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setOpacityValue: React.Dispatch<React.SetStateAction<number>>;
   setPvalThreshold?: React.Dispatch<React.SetStateAction<number>>;
   setOrder: React.Dispatch<React.SetStateAction<any>>;
   categories: { row: {}; col: {}; };
   resultCategories?: string[];
+  workflowBaselineRowCount?: number;
+  workflowBaselineColumnCount?: number;
+  workflowBaselineRowFeatures?: string[];
+  workflowBaselineColMetadataValues?: Record<string, string[]>;
+  workflowBaselineRowMetadataValues?: Record<string, string[]>;
   order: order;
   // Legend: React.ReactElement;
   panelWidth: number;
@@ -388,9 +429,17 @@ export default function PersistentDrawerLeft({
       field?: string;
       value?: any;
       top_n?: number;
+      criteria?: Array<{
+        field: string;
+        value: any;
+      }>;
     }>
   ) => void;
   activeWorkflowActions: WorkflowAction[];
+  onRunImportedWorkflow?: (
+    actions: WorkflowAction[]
+  ) => void;
+  isImportedWorkflowRunning?: boolean;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -402,15 +451,141 @@ export default function PersistentDrawerLeft({
     onExternalCommandHandled: () => void
   ) => React.ReactNode;
   colMetadataValues?: Record<string, string[]>;
+  rowMetadataValues?: Record<string, string[]>;
   sidebarTopContent?: React.ReactNode;
   homepage: boolean;
 }) {
-  const [isDrawerOpen, setDrawerOpen] = useState(true);
   const [isAIExpanded, setIsAIExpanded] = useState(false);
   const [isTrackChangesExpanded, setIsTrackChangesExpanded] = useState(false);
   const [isMetadataGuideOpen, setIsMetadataGuideOpen] = useState(false);
   const [pendingGuideCommand, setPendingGuideCommand] = useState<string | null>(null);
+  const [isWorkflowReviewOpen, setIsWorkflowReviewOpen] =
+    useState(false);
   const aiPanelRef = React.useRef<HTMLDivElement>(null);
+  const workflowUploadInputRef =
+    React.useRef<HTMLInputElement>(null);
+
+  const [uploadedWorkflow, setUploadedWorkflow] =
+    useState<WorkflowRecipe | null>(null);
+
+  const [uploadedWorkflowSteps, setUploadedWorkflowSteps] =
+    useState<ImportedWorkflowStep[]>([]);
+
+  const [
+    uploadedWorkflowRecipeIssues,
+    setUploadedWorkflowRecipeIssues
+  ] = useState<WorkflowIssue[]>([]);
+
+
+  const getIncludedMeta = (included: boolean) => {
+    return included
+      ? {
+        label: 'Included',
+        icon: <CheckCircleIcon sx={{ fontSize: 14, color: SIDEBAR_COLORS.primary }} />,
+        textColor: SIDEBAR_COLORS.primary,
+        bgColor: SIDEBAR_COLORS.chip,
+        borderColor: SIDEBAR_COLORS.primary,
+      }
+      : {
+        label: 'Excluded',
+        icon: <RemoveCircleOutlineIcon sx={{ fontSize: 14, color: '#757575' }} />,
+        textColor: '#616161',
+        bgColor: '#f5f5f5',
+        borderColor: '#e0e0e0',
+      };
+  };
+
+  const getValidationMeta = (status?: string) => {
+    switch (status) {
+      case 'ready':
+        return {
+          label: 'Ready',
+          icon: <CheckCircleIcon sx={{ fontSize: 14, color: '#2e7d32' }} />,
+          textColor: '#2e7d32',
+          bgColor: '#e8f5e9',
+          borderColor: '#c8e6c9',
+        };
+
+      case 'needs_resolution':
+        return {
+          label: 'Needs resolution',
+          icon: <ErrorOutlineIcon sx={{ fontSize: 14, color: '#ed6c02' }} />,
+          textColor: '#b26a00',
+          bgColor: '#fff3e0',
+          borderColor: '#ffddb0',
+        };
+
+      case 'blocked':
+        return {
+          label: 'Blocked',
+          icon: <BlockIcon sx={{ fontSize: 14, color: '#d32f2f' }} />,
+          textColor: '#c62828',
+          bgColor: '#ffebee',
+          borderColor: '#ffcdd2',
+        };
+
+      default:
+        return {
+          label: 'Review',
+          icon: <ErrorOutlineIcon sx={{ fontSize: 14, color: '#0288d1' }} />,
+          textColor: '#0277bd',
+          bgColor: '#e1f5fe',
+          borderColor: '#b3e5fc',
+        };
+    }
+  };
+
+  const renderStatusPill = ({
+    icon,
+    label,
+    textColor,
+    bgColor,
+    borderColor
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    textColor: string;
+    bgColor: string;
+    borderColor: string;
+  }) => (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '2px 7px',
+        borderRadius: '999px',
+        fontSize: '10px',
+        fontWeight: 600,
+        color: textColor,
+        backgroundColor: bgColor,
+        border: `1px solid ${borderColor}`,
+        lineHeight: 1.2,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
+
+  const handleWorkflowParameterResolution = (
+    actionId: string,
+    parameter: string,
+    resolvedValue: unknown
+  ) => {
+    setUploadedWorkflowSteps(prev =>
+      prev.map(step =>
+        step.originalAction.id === actionId
+          ? resolveImportedWorkflowStepParameter(
+            step,
+            parameter,
+            resolvedValue
+          )
+          : step
+      )
+    );
+  };
 
   const handleDownloadWorkflow = () => {
     const recipe: WorkflowRecipe = {
@@ -439,6 +614,117 @@ export default function PersistentDrawerLeft({
 
     URL.revokeObjectURL(url);
   };
+
+  const handleWorkflowUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Partial<WorkflowRecipe>;
+
+      if (parsed.format !== WORKFLOW_FORMAT) {
+        window.alert(
+          'Invalid workflow file: unrecognized workflow format.'
+        );
+        return;
+      }
+
+      const recipeIssues: WorkflowIssue[] = [];
+
+      if (parsed.schemaVersion !== WORKFLOW_SCHEMA_VERSION) {
+        recipeIssues.push({
+          code: 'INCOMPATIBLE_WORKFLOW_VERSION',
+          message:
+            `Workflow schema version "${String(
+              parsed.schemaVersion
+            )}" is incompatible with this version of ClusterChirp. ` +
+            `Expected "${WORKFLOW_SCHEMA_VERSION}".`
+        });
+      }
+
+      if (!Array.isArray(parsed.actions)) {
+        window.alert(
+          'Invalid workflow file: actions must be an array.'
+        );
+        return;
+      }
+
+      const invalidActionIndex =
+        parsed.actions.findIndex(
+          action => !isValidWorkflowAction(action)
+        );
+
+      if (invalidActionIndex >= 0) {
+        window.alert(
+          `Invalid workflow file: action ${invalidActionIndex + 1
+          } has an invalid or unsupported structure.`
+        );
+        return;
+      }
+
+      if (typeof parsed.createdAt !== 'string') {
+        window.alert(
+          'Invalid workflow file: missing or invalid createdAt.'
+        );
+        return;
+      }
+
+      const validatedRecipe: WorkflowRecipe = {
+        format: WORKFLOW_FORMAT,
+        schemaVersion: WORKFLOW_SCHEMA_VERSION,
+        createdAt: parsed.createdAt,
+        actions: parsed.actions as WorkflowAction[]
+      };
+
+      setUploadedWorkflow(validatedRecipe);
+      setUploadedWorkflowRecipeIssues(recipeIssues);
+
+      setUploadedWorkflowSteps(
+        createImportedWorkflowSteps(
+          validatedRecipe.actions,
+          {
+            columnMetadataFields: Object.keys(
+              workflowBaselineColMetadataValues
+            ),
+            rowMetadataFields: Object.keys(
+              workflowBaselineRowMetadataValues
+            ),
+            columnMetadataValues:
+              workflowBaselineColMetadataValues,
+            rowMetadataValues:
+              workflowBaselineRowMetadataValues,
+            rowFeatures: workflowBaselineRowFeatures,
+            rowCount: workflowBaselineRowCount,
+            columnCount: workflowBaselineColumnCount
+          }
+        )
+      );
+
+      setIsAIExpanded(false);
+      setIsTrackChangesExpanded(false);
+      setIsWorkflowReviewOpen(true);
+
+      console.log(
+        '📥 WORKFLOW UPLOAD VALIDATED',
+        validatedRecipe
+      );
+    } catch (err) {
+      console.error('Failed to parse workflow file:', err);
+
+      window.alert(
+        'Invalid workflow file: could not parse JSON.'
+      );
+    } finally {
+      // Allows selecting the same file again afterward.
+      input.value = '';
+    }
+  };
+
 
   /* Keep drawer independent from heatmap height */
   const drawerHostRef = React.useRef<HTMLDivElement>(null);
@@ -472,6 +758,80 @@ export default function PersistentDrawerLeft({
   const drawerWidth = panelWidth;
   const colCategorynames = Object.keys(categories.col);
   const rowCategorynames = Object.keys(categories.row);
+
+  const uploadedWorkflowPreflight =
+    buildWorkflowPreflightResult(
+      uploadedWorkflowSteps,
+      {
+        columnMetadataFields: Object.keys(
+          workflowBaselineColMetadataValues
+        ),
+        rowMetadataFields: Object.keys(
+          workflowBaselineRowMetadataValues
+        ),
+        columnMetadataValues:
+          workflowBaselineColMetadataValues,
+        rowMetadataValues:
+          workflowBaselineRowMetadataValues,
+        rowFeatures: workflowBaselineRowFeatures,
+        rowCount: workflowBaselineRowCount,
+        columnCount: workflowBaselineColumnCount
+      },
+      uploadedWorkflowRecipeIssues
+    );
+
+  const uploadedWorkflowValidatedSteps =
+    uploadedWorkflowPreflight.steps;
+
+  const uploadedWorkflowIncludedCount =
+    uploadedWorkflowPreflight.includedSteps;
+
+  const uploadedWorkflowExcludedCount =
+    uploadedWorkflowPreflight.excludedSteps;
+
+  const uploadedWorkflowModifiedCount =
+    uploadedWorkflowPreflight.modifiedSteps;
+
+  const uploadedWorkflowUnresolvedCount =
+    uploadedWorkflowPreflight.unresolvedSteps;
+
+  const uploadedWorkflowReadyCount =
+    uploadedWorkflowValidatedSteps.filter(
+      step => step.validation.status === 'ready'
+    ).length;
+
+  const uploadedWorkflowNeedsResolutionCount =
+    uploadedWorkflowValidatedSteps.filter(
+      step => step.validation.status === 'needs_resolution'
+    ).length;
+
+  const uploadedWorkflowBlockedCount =
+    uploadedWorkflowValidatedSteps.filter(
+      step => step.validation.status === 'blocked'
+    ).length;
+
+  const uploadedWorkflowCanRun =
+    uploadedWorkflowPreflight.canRun;
+
+  const uploadedWorkflowActionsToRun =
+    uploadedWorkflowValidatedSteps
+      .filter(step => step.included)
+      .map(step => {
+        const effectiveAction =
+          step.resolvedAction ?? step.originalAction;
+
+        if (step.resolutionChanges.length === 0) {
+          return effectiveAction;
+        }
+
+        return {
+          ...effectiveAction,
+          importProvenance: {
+            originalAction: step.originalAction,
+            resolutionChanges: step.resolutionChanges
+          }
+        };
+      });
 
   const appliedColMetadataFields = new Set(
     (filters?.col || [])
@@ -757,14 +1117,13 @@ export default function PersistentDrawerLeft({
   }));
 
   const handleDrawerOpen = () => {
-    setDrawerOpen(true);
     setIsDrawerOpen(true);
   };
 
   const handleDrawerClose = () => {
-    setDrawerOpen(false);
     setIsDrawerOpen(false);
   };
+
   return (
     <div
       ref={drawerHostRef}
@@ -873,10 +1232,18 @@ export default function PersistentDrawerLeft({
               Track Changes
             </Button>
 
+            <input
+              ref={workflowUploadInputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: 'none' }}
+              onChange={handleWorkflowUpload}
+            />
+
             <Button
               variant="outlined"
               fullWidth
-              disabled
+              onClick={() => workflowUploadInputRef.current?.click()}
               sx={{
                 height: '30px',
                 minWidth: 0,
@@ -1588,6 +1955,633 @@ export default function PersistentDrawerLeft({
             )}
           </div>
         )}
+
+        {isWorkflowReviewOpen && uploadedWorkflow && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: 1700,
+              backgroundColor: '#ffffff',
+              boxSizing: 'border-box',
+              padding: '16px 10px',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+            }}
+          >
+            <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsWorkflowReviewOpen(false);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '8px',
+                cursor: 'pointer',
+                width: 'fit-content',
+                color: SIDEBAR_COLORS.text,
+
+                '&:hover': {
+                  color: SIDEBAR_COLORS.primary,
+                },
+              }}
+            >
+              <IconButton
+                size="small"
+                aria-label="Back to controls"
+                sx={{
+                  pointerEvents: 'none',
+                  color: 'inherit',
+                }}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+
+              <span
+                style={{
+                  fontFamily: SIDEBAR_FONT,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: 'inherit',
+                }}
+              >
+                Back to controls
+              </span>
+            </Box>
+
+            <Divider
+              sx={{
+                marginTop: '-4px',
+                marginBottom: '10px',
+              }}
+            />
+
+            <div
+              style={{
+                ...sidebarSectionLabelStyle,
+                color: SIDEBAR_COLORS.text,
+                fontWeight: 550,
+                marginBottom: '4px',
+              }}
+            >
+              Workflow Review
+            </div>
+
+            {uploadedWorkflowPreflight.recipeIssues.map(
+              (issue, index) => (
+                <div
+                  key={`${issue.code}-${index}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '6px',
+                    padding: '8px',
+                    marginBottom: '10px',
+                    border: '1px solid #ef9a9a',
+                    borderRadius: '6px',
+                    backgroundColor: '#ffebee',
+                    fontFamily: SIDEBAR_FONT,
+                    fontSize: '12px',
+                    color: '#b71c1c',
+                    lineHeight: 1.35,
+                  }}
+                >
+                  <BlockIcon
+                    sx={{
+                      fontSize: 16,
+                      marginTop: '1px',
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  <span>{issue.message}</span>
+                </div>
+              )
+            )}
+
+            <div
+              style={{
+                fontFamily: SIDEBAR_FONT,
+                fontSize: '12px',
+                color: SIDEBAR_COLORS.secondaryText,
+                marginBottom: '10px',
+              }}
+            >
+              {/* Total */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  marginBottom: '7px',
+                  fontWeight: 500,
+                }}
+              >
+                <FormatListNumberedIcon
+                  sx={{
+                    fontSize: 18,
+                    color: '#616161',
+                  }}
+                />
+                {uploadedWorkflow.actions.length} Total Steps Detected
+              </div>
+
+              {/* Two-column summary */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.5fr 1fr',
+                  columnGap: '5px',
+                  rowGap: '5px',
+                }}
+              >
+                {/* Left: Ready */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <CheckCircleIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#2e7d32',
+                    }}
+                  />
+                  {uploadedWorkflowReadyCount} Ready
+                </div>
+
+                {/* Right: Included */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <CheckBoxIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#1976d2',
+                    }}
+                  />
+                  {uploadedWorkflowIncludedCount} Included
+                </div>
+
+                {/* Left: Needs Resolution */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <ErrorOutlineIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#ed6c02',
+                    }}
+                  />
+                  {uploadedWorkflowNeedsResolutionCount} Need Resolution
+                </div>
+
+                {/* Right: Excluded */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <CheckBoxOutlineBlankIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#757575',
+                    }}
+                  />
+                  {uploadedWorkflowExcludedCount} Excluded
+                </div>
+
+                {/* Left: Blocked */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    gridColumn: '1',
+                  }}
+                >
+                  <BlockIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#d32f2f',
+                    }}
+                  />
+                  {uploadedWorkflowBlockedCount} Blocked
+                </div>
+
+                {/* Right: Modified */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <EditOutlinedIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#1976d2',
+                    }}
+                  />
+                  {uploadedWorkflowModifiedCount} Modified
+                </div>
+
+                {/* Left: Unresolved */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    gridColumn: '1',
+                  }}
+                >
+                  <ErrorOutlineIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#d32f2f',
+                    }}
+                  />
+                  {uploadedWorkflowUnresolvedCount} Unresolved
+                </div>
+              </div>
+            </div>
+
+            <Divider
+              sx={{
+                marginTop: '6px',
+                marginBottom: '6px',
+              }}
+            />
+
+            <ol
+              style={{
+                margin: 0,
+                paddingLeft: '22px',
+              }}
+            >
+              {uploadedWorkflow.actions.map((action, index) => {
+                const step = uploadedWorkflowValidatedSteps[index];
+                const included =
+                  step?.included ?? true;
+
+                const validation =
+                  step?.validation;
+
+                const includedMeta =
+                  getIncludedMeta(included);
+
+                const validationMeta =
+                  getValidationMeta(validation?.status);
+
+                return (
+                  <li
+                    key={action.id}
+                    style={{
+                      fontFamily: SIDEBAR_FONT,
+                      fontSize: '12px',
+                      color: SIDEBAR_COLORS.text,
+                      marginBottom: '2px',
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 500,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {action.label}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        marginTop: '2px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {renderStatusPill(validationMeta)}
+                        {renderStatusPill(includedMeta)}
+                      </div>
+
+                      <Checkbox
+                        size="small"
+                        checked={included}
+                        onChange={(event) => {
+                          const nextIncluded =
+                            event.target.checked;
+
+                          setUploadedWorkflowSteps(prev =>
+                            prev.map(step =>
+                              step.originalAction.id === action.id
+                                ? {
+                                  ...step,
+                                  included: nextIncluded
+                                }
+                                : step
+                            )
+                          );
+                        }}
+                        icon={
+                          <CheckBoxOutlineBlankIcon
+                            sx={{
+                              color: '#1976d2',
+                              fontSize: 22
+                            }}
+                          />
+                        }
+                        checkedIcon={
+                          <CheckBoxIcon
+                            sx={{
+                              color: '#1976d2',
+                              fontSize: 22
+                            }}
+                          />
+                        }
+                        sx={{
+                          padding: 0,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </div>
+
+                    {validation?.issues?.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: '6px',
+                          paddingLeft: '2px',
+                        }}
+                      >
+                        {validation.issues.map(
+                          (issue, issueIndex) => (
+                            <div
+                              key={`${action.id}-issue-${issueIndex}`}
+                              style={{
+                                fontSize: '10.5px',
+                                color:
+                                  validation.status === 'blocked'
+                                    ? '#c62828'
+                                    : '#9a6700',
+                                lineHeight: 1.35,
+                                marginBottom: '6px',
+                              }}
+                            >
+                              <div>
+                                • {issue.message}
+                              </div>
+
+                              {issue.dependsOnActionId && (() => {
+                                const dependencyIndex =
+                                  uploadedWorkflow.actions.findIndex(
+                                    workflowAction =>
+                                      workflowAction.id ===
+                                      issue.dependsOnActionId
+                                  );
+
+                                if (dependencyIndex < 0) {
+                                  return null;
+                                }
+
+                                return (
+                                  <div
+                                    style={{
+                                      marginTop: '2px',
+                                      fontSize: '10px',
+                                      color: '#616161',
+                                    }}
+                                  >
+                                    Depends on step {dependencyIndex + 1}
+                                  </div>
+                                );
+                              })()}
+
+                              {issue.parameter &&
+                                issue.availableValues &&
+                                issue.availableValues.length > 0 && (
+                                  <Select
+                                    size="small"
+                                    displayEmpty
+                                    value={(() => {
+                                      const effectiveAction =
+                                        step?.resolvedAction ??
+                                        step?.originalAction;
+
+                                      if (
+                                        !effectiveAction ||
+                                        !issue.parameter
+                                      ) {
+                                        return '';
+                                      }
+
+                                      const currentValue =
+                                        issue.parameter === 'target'
+                                          ? effectiveAction.target
+                                          : effectiveAction.parameters[
+                                          issue.parameter
+                                          ];
+
+                                      if (
+                                        currentValue === undefined ||
+                                        currentValue === null
+                                      ) {
+                                        return '';
+                                      }
+
+                                      const currentValueString =
+                                        String(currentValue);
+
+                                      return issue.availableValues?.includes(
+                                        currentValueString
+                                      )
+                                        ? currentValueString
+                                        : '';
+                                    })()}
+                                    onChange={(event) => {
+                                      const selectedValue =
+                                        event.target.value;
+
+                                      const effectiveAction =
+                                        step?.resolvedAction ??
+                                        step?.originalAction;
+
+                                      const currentValue =
+                                        issue.parameter === 'target'
+                                          ? effectiveAction?.target
+                                          : effectiveAction?.parameters[
+                                          issue.parameter
+                                          ];
+
+                                      let resolvedValue: unknown =
+                                        selectedValue;
+
+                                      if (typeof currentValue === 'boolean') {
+                                        resolvedValue =
+                                          selectedValue === 'true';
+                                      } else if (
+                                        typeof currentValue === 'number'
+                                      ) {
+                                        resolvedValue =
+                                          Number(selectedValue);
+                                      }
+
+                                      handleWorkflowParameterResolution(
+                                        action.id,
+                                        issue.parameter,
+                                        resolvedValue
+                                      );
+                                    }}
+                                    sx={{
+                                      marginTop: '4px',
+                                      minWidth: '150px',
+                                      height: '28px',
+                                      fontSize: '11px',
+                                      backgroundColor: '#ffffff',
+                                    }}
+                                  >
+                                    <MenuItem
+                                      value=""
+                                      disabled
+                                      sx={{ fontSize: '11px' }}
+                                    >
+                                      Select replacement...
+                                    </MenuItem>
+
+                                    {issue.availableValues.map(
+                                      availableValue => (
+                                        <MenuItem
+                                          key={availableValue}
+                                          value={availableValue}
+                                          sx={{ fontSize: '11px' }}
+                                        >
+                                          {availableValue}
+                                        </MenuItem>
+                                      )
+                                    )}
+                                  </Select>
+                                )}
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+
+                    {step?.resolutionChanges?.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: '5px',
+                          paddingLeft: '2px',
+                          fontSize: '10.5px',
+                          color: '#1976d2',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {step.resolutionChanges.map(
+                          (change, changeIndex) => (
+                            <div
+                              key={`${action.id}-resolution-${changeIndex}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                marginBottom: '2px',
+                              }}
+                            >
+                              <EditOutlinedIcon
+                                sx={{
+                                  fontSize: 12,
+                                  flexShrink: 0,
+                                }}
+                              />
+
+                              <span>
+                                {change.parameter}:{' '}
+                                {String(change.originalValue)}
+                                {' → '}
+                                {String(change.resolvedValue)}
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+
+            <Divider
+              sx={{
+                marginTop: '10px',
+                marginBottom: '8px',
+              }}
+            />
+
+            <Button
+              size="small"
+              variant="contained"
+              fullWidth
+              disabled={
+                !uploadedWorkflowCanRun ||
+                isImportedWorkflowRunning
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+
+                if (
+                  !uploadedWorkflowCanRun ||
+                  isImportedWorkflowRunning
+                ) {
+                  return;
+                }
+
+                onRunImportedWorkflow?.(
+                  uploadedWorkflowActionsToRun
+                );
+                setIsWorkflowReviewOpen(false);
+                setIsTrackChangesExpanded(false);
+              }}
+              sx={{
+                ...sidebarControlText,
+                height: '32px',
+                textTransform: 'none',
+
+                '&.Mui-disabled': {
+                  backgroundColor: '#e0e0e0',
+                  color: SIDEBAR_COLORS.disabled,
+                },
+              }}
+            >
+              Run Workflow
+            </Button>
+          </div>
+        )
+        }
 
         {chatContent && (
           <div

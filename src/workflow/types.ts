@@ -45,6 +45,8 @@ export interface WorkflowAction {
     parameters: Record<string, unknown>;
 
     createdAt: string;
+
+    importProvenance?: WorkflowImportProvenance;
 }
 
 export interface WorkflowRecipe {
@@ -111,6 +113,12 @@ export interface WorkflowResolutionChange {
     resolvedValue: unknown;
 }
 
+export interface WorkflowImportProvenance {
+    originalAction: WorkflowAction;
+
+    resolutionChanges: WorkflowResolutionChange[];
+}
+
 export interface ImportedWorkflowStep {
     originalAction: WorkflowAction;
 
@@ -133,6 +141,8 @@ export interface ImportedWorkflowStep {
 
 export interface WorkflowPreflightResult {
     steps: ImportedWorkflowStep[];
+
+    recipeIssues: WorkflowIssue[];
 
     canRun: boolean;
 

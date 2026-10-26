@@ -21,6 +21,10 @@ interface Filter {
   field?: string;
   value?: any;
   top_n?: number;
+  criteria?: Array<{
+    field: string;
+    value: any;
+  }>;
 }
 
 interface FiltersState {
@@ -40,6 +44,10 @@ interface FiltersSectionProps {
       field?: string;
       value?: any;
       top_n?: number;
+      criteria?: Array<{
+        field: string;
+        value: any;
+      }>;
     }>
   ) => void;
 }

@@ -170,6 +170,51 @@ export const processHeatmapCommand = async (
   }
 };
 
+export const processWorkflowAction = async (
+  sessionId: string,
+  workflowAction: Record<string, any>,
+  currentState?: {
+    filters?: Record<string, any>;
+    selections?: Record<string, any>;
+    clustering?: Record<string, any>;
+    visualParams?: Record<string, any>;
+    commandHistory?: string[];
+    transformation?: {
+      axis: 'row' | 'col';
+      reZscoreFilteredSubset: boolean;
+    };
+  }
+): Promise<any> => {
+  try {
+    const requestData = {
+      session_id: sessionId,
+      workflow_action: workflowAction,
+      current_state: currentState || {
+        filters: {},
+        selections: {},
+        clustering: {},
+        visualParams: {},
+        commandHistory: [],
+        transformation: {
+          axis: 'row',
+          reZscoreFilteredSubset: false
+        }
+      }
+    };
+
+    return await post<any>(
+      'api/heatmapdata/command/',
+      requestData
+    );
+  } catch (error) {
+    console.error(
+      'Error processing workflow action:',
+      error
+    );
+    throw error;
+  }
+};
+
 /**
  * Get correlation network data for specified nodes
  * 
