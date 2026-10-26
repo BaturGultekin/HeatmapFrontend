@@ -20,28 +20,48 @@ function SampleData() {
     ["", "", "SampleID1", "SampleID2", "SampleID3"],
     ["", "", "Condition: Treated", "Condition: Control", "Condition: Treated"],
     ["", "", "Timepoint: 24h", "Timepoint: 48h", "Timepoint: 24h"],
-    
+
     // Data rows with genes and values
     ["Gene1", "Category: High Interest", -2.34, 4.56, 0.23],
     ["Gene2", "Category: High Interest", 3.45, -1.23, -5.67],
     ["Gene3", "Category: Low Interest", 1.23, 2.34, 0.78]
   ];
-  
+
   // Generate sample CSV content
   const generateCSVContent = () => {
     return sampleData.map(row => row.join('\t')).join('\n');
   };
-  
+
   return (
     <Box sx={{ padding: "40px", maxWidth: "900px", margin: "0 auto" }}>
-      <Typography variant="h5" sx={{ mb: 3,fontWeight: 'bold'  }}>
+
+      <Box sx={{ display: "flex", justifyContent: "center" }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => window.close()}
+          sx={{
+            mb: 3,
+            px: 3,
+            py: 1.2,
+            fontSize: "15px",
+            fontWeight: 600,
+            textTransform: "none"
+          }}
+        >
+          Close
+        </Button>
+      </Box>
+
+
+      <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
         Sample Data Format
       </Typography>
-      
+
       <Typography sx={{ mb: 3 }}>
         This is an example of the data format expected by ClusterChirp. Your data should be organized in a tabular format:
       </Typography>
-      
+
       {/* <Typography component="ul" sx={{ mb: 4, pl: 2 }}>
         <li>Column headers representing sample IDs</li>
         <li>Additional header rows for sample categories (Condition, Timepoint, Gender, etc.)</li>
@@ -50,11 +70,11 @@ function SampleData() {
         <li>Numerical expression values in the data cells</li>
         <li>File formats supported: CSV, TSV, or TXT</li>
       </Typography> */}
-      
+
       <Typography sx={{ mb: 3 }}>
         Example data:
       </Typography>
-      
+
       <TableContainer component={Paper} sx={{ mb: 4, overflowX: "auto" }}>
         <Table>
           <TableBody>
@@ -64,15 +84,15 @@ function SampleData() {
                   // Special styling for headers
                   const isHeaderRow = rowIndex < 3;
                   const isHeaderCol = cellIndex < 2;
-                  
+
                   return (
-                    <TableCell 
+                    <TableCell
                       key={cellIndex}
                       align={typeof cell === 'number' ? 'right' : 'left'}
                       sx={{
                         fontWeight: (isHeaderRow || isHeaderCol) ? 'bold' : 'normal',
-                        backgroundColor: (isHeaderRow && cellIndex >= 2) ? '#f5f5f5' : 
-                                        (isHeaderCol && rowIndex >= 3) ? '#f5f5f5' : 'inherit',
+                        backgroundColor: (isHeaderRow && cellIndex >= 2) ? '#f5f5f5' :
+                          (isHeaderCol && rowIndex >= 3) ? '#f5f5f5' : 'inherit',
                         minWidth: cellIndex < 2 ? '180px' : '120px'
                       }}
                     >
@@ -85,11 +105,11 @@ function SampleData() {
           </TableBody>
         </Table>
       </TableContainer>
-      
+
       <Typography variant="h6" sx={{ mb: 2 }}>
         Sample TSV Format
       </Typography>
-      
+
       <Box
         sx={{
           backgroundColor: "#f5f5f5",
@@ -104,28 +124,10 @@ function SampleData() {
       >
         {generateCSVContent()}
       </Box>
-      
+
       <Typography sx={{ mb: 3 }}>
         You can download this example as a TSV file and use it as a template for your own data.
       </Typography>
-      
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => window.close()}
-          sx={{ mr: 2 }}
-        >
-          Close
-        </Button>
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={() => window.location.href = "/"}
-        >
-          Back to Home
-        </Button>
-      </Box>
     </Box>
   );
 }

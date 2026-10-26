@@ -193,33 +193,7 @@ export const DeckGLHeatmap = ({
   const [OpacityValue, setOpacityValue] = useState(OPACITY);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [matrixOrientation, setMatrixOrientation] = useState('Original');
-  const matrixInfoRef = useRef<HTMLDivElement | null>(null);
-  const [matrixInfoHeight, setMatrixInfoHeight] = useState(0);
 
-  React.useLayoutEffect(() => {
-    const element = matrixInfoRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    const updateMatrixInfoHeight = () => {
-      setMatrixInfoHeight(
-        Math.ceil(element.getBoundingClientRect().height)
-      );
-    };
-
-    updateMatrixInfoHeight();
-
-    const resizeObserver =
-      new ResizeObserver(updateMatrixInfoHeight);
-
-    resizeObserver.observe(element);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
 
   const [zScoreAxis, setZScoreAxis] =
     useState<ZScoreAxis>('row');
@@ -385,6 +359,41 @@ export const DeckGLHeatmap = ({
   const [showPathwaySelector, setShowPathwaySelector] = useState(false);
   const [pathwayResults, setPathwayResults] = useState([]);
   const [lastSearchQuery, setLastSearchQuery] = useState("");
+
+  const [matrixInfoHeight, setMatrixInfoHeight] = useState(0);
+
+  const matrixInfoResizeObserverRef =
+    useRef<ResizeObserver | null>(null);
+
+  const matrixInfoRef = React.useCallback(
+    (element: HTMLDivElement | null) => {
+      matrixInfoResizeObserverRef.current?.disconnect();
+      matrixInfoResizeObserverRef.current = null;
+
+      if (!element) {
+        return;
+      }
+
+      const updateMatrixInfoHeight = () => {
+        setMatrixInfoHeight(
+          Math.ceil(
+            element.getBoundingClientRect().height
+          )
+        );
+      };
+
+      updateMatrixInfoHeight();
+
+      const resizeObserver =
+        new ResizeObserver(updateMatrixInfoHeight);
+
+      resizeObserver.observe(element);
+
+      matrixInfoResizeObserverRef.current =
+        resizeObserver;
+    },
+    []
+  );
 
 
   const [filters, setFilters] = useState<any>({
