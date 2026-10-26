@@ -11,12 +11,14 @@ type CustomSliderProps = {
   setClusterValue: React.Dispatch<React.SetStateAction<number>>;
   clusterValue: number;
   onInteractionStart?: () => void;
+  onInteractionEnd?: (value: number) => void;
 };
 
 export default function CustomSlider({
   setClusterValue,
   clusterValue,
   onInteractionStart,
+  onInteractionEnd,
 }: CustomSliderProps) {
 
   const interactionStartedRef = React.useRef(false);
@@ -37,8 +39,12 @@ export default function CustomSlider({
     setClusterValue(12 - (newValue as number));
   };
 
-  const handleSliderCommitted = () => {
+  const handleSliderCommitted = (
+    _event: React.SyntheticEvent | Event,
+    newValue: number | number[]
+  ) => {
     interactionStartedRef.current = false;
+    onInteractionEnd?.(12 - (newValue as number));
   };
 
   return (

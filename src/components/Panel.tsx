@@ -342,6 +342,10 @@ export default function PersistentDrawerLeft({
   onGuiClearFiltersRequest,
   onGuiRemoveFiltersRequest,
   onSliderInteractionStart,
+  onOpacityInteractionEnd,
+  onRowClusterDepthInteractionEnd,
+  onColumnClusterDepthInteractionEnd,
+  onMetadataSelectionChange,
   matrixOrientation,
   setMatrixOrientation,
   reZscoreFilteredSubset,
@@ -408,6 +412,13 @@ export default function PersistentDrawerLeft({
   opacityValue: number;
   pvalThreshold: number;
   onSliderInteractionStart: () => void;
+  onOpacityInteractionEnd?: (value: number) => void;
+  onRowClusterDepthInteractionEnd?: (value: number) => void;
+  onColumnClusterDepthInteractionEnd?: (value: number) => void;
+  onMetadataSelectionChange?: (
+    axis: 'row' | 'col',
+    categories: string[]
+  ) => void;
   reZscoreFilteredSubset: boolean;
   zScoreAxis: 'row' | 'col';
 
@@ -1494,12 +1505,24 @@ export default function PersistentDrawerLeft({
 
         {colCategorynames.length > 0 &&
           <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <MultiSelect elements={colCategorynames} order={order} setOrder={setOrderWithUndo} axis='col' />
+            <MultiSelect
+              elements={colCategorynames}
+              order={order}
+              setOrder={setOrderWithUndo}
+              axis='col'
+              onSelectionChange={onMetadataSelectionChange}
+            />
           </div>}
 
         {rowCategorynames.length > 0 &&
           <div style={{ marginLeft: '10px', marginRight: '10px', marginTop: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            <MultiSelect elements={rowCategorynames} order={order} setOrder={setOrderWithUndo} axis='row' />
+            <MultiSelect
+              elements={rowCategorynames}
+              order={order}
+              setOrder={setOrderWithUndo}
+              axis='row'
+              onSelectionChange={onMetadataSelectionChange}
+            />
           </div>}
 
         <div
@@ -1602,6 +1625,7 @@ export default function PersistentDrawerLeft({
                         : rowClusterValue
                     }
                     onInteractionStart={onSliderInteractionStart}
+                    onInteractionEnd={onRowClusterDepthInteractionEnd}
                   />
                 </div>
               )}
@@ -1629,6 +1653,7 @@ export default function PersistentDrawerLeft({
                         : colClusterValue
                     }
                     onInteractionStart={onSliderInteractionStart}
+                    onInteractionEnd={onColumnClusterDepthInteractionEnd}
                   />
                 </div>
               )}
@@ -1649,6 +1674,7 @@ export default function PersistentDrawerLeft({
             step={0.25}
             initialVal={1}
             onInteractionStart={onSliderInteractionStart}
+            onInteractionEnd={onOpacityInteractionEnd}
           />
           {/* <MultipurposeSlider direction='horizontal' setOpacityValue={setOpacityValue} minVal={0} maxVal={1} step={0.05} initialVal={0.05} calculateSteps={true}/> */}
         </div>

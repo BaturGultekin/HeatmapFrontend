@@ -29,7 +29,10 @@ export type WorkflowActionType =
     | 'set_clustering'
     | 'transpose'
     | 'crop'
-    | 'clear_crop';
+    | 'clear_crop'
+    | 'set_opacity'
+    | 'set_cluster_depth'
+    | 'set_metadata_categories';
 
 export interface WorkflowAction {
     id: string;

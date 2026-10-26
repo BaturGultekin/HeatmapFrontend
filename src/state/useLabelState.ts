@@ -61,7 +61,7 @@
 //           So col labels and row labels are in commmon unit. I have each layer of size 8pixel and 1 extra layer is clustering layer
 //           So From deckgl docs 1common Unit = 2**Zoom*Pixel
 //          */
-    
+
 //         row =
 //           Math.max(
 //             ...dataState.rowLabels.map((l) =>
@@ -98,6 +98,11 @@ import {
   DEFAULT_LABEL_MAX_SIZE,
   DEFAULT_LABEL_OFFSET,
   MIN_LABEL_CHARS,
+  CATEGORY_LAYER_HEIGHT,
+  LAYER_GAP,
+  CLUSTER_LAYER_HEIGHT,
+  CLUSTER_LAYER_GAP,
+  MAX_CATEGORIES,
 } from '../const';
 import { DataStateShape, HeatmapStateShape, order } from '../types';
 import getTextWidth from '../utils/getTextWidth';
@@ -107,10 +112,11 @@ export const useLabelState = (
   heatmapState: HeatmapStateShape | null,
   labels: DeckGLHeatmapProps['labels'],
   container: HTMLDivElement | null,
-  order:order,
-  ID:string,
-  datastateVersion:any,
-  heatmapstateVersion:any,
+  order: order,
+  ID: string,
+  datastateVersion: any,
+  heatmapstateVersion: any,
+  matrixInfoHeight: number,
   setLabelsState: React.Dispatch<
     React.SetStateAction<{
       colLabelsWidth: number;
@@ -142,23 +148,50 @@ export const useLabelState = (
 
         const columnFont = `normal ${columnFontSize}px ${fontFamily}`;
         const rowFont = `normal ${rowFontSize}px ${fontFamily}`;
-        col = order.colCat.length > 0 || ID.includes('Patient') ? 8*(order.colCat.length+1)*2: Math.max(
-          ...dataState.colLabels.map((l) =>
-            getTextWidth(
-              l.text.slice(
-                0,
-                (labels?.column?.maxChars || MIN_LABEL_CHARS) + 3 // add 3 for ellipsis when truncating
-              ),
-              columnFont
-            )
-          )
-        ) - (labels?.column?.offset || DEFAULT_LABEL_OFFSET);
+        const baseColumnLabelWidth =
+          dataState.colLabels.length > 0
+            ? Math.max(
+              ...dataState.colLabels.map((l) =>
+                getTextWidth(
+                  l.text.slice(
+                    0,
+                    (labels?.column?.maxChars || MIN_LABEL_CHARS) + 3
+                  ),
+                  columnFont
+                )
+              )
+            ) - (labels?.column?.offset || DEFAULT_LABEL_OFFSET)
+            : 0;
 
+        const metadataStackHeight =
+          order.colCat.length *
+          (CATEGORY_LAYER_HEIGHT + LAYER_GAP);
+
+        const clusterStackHeight =
+          order.col === 'cluster'
+            ? CLUSTER_LAYER_HEIGHT + CLUSTER_LAYER_GAP
+            : 0;
+
+        const fixedTopClearance =
+          order.colCat.length === 0
+            ? Math.max(
+              baseColumnLabelWidth,
+              (matrixInfoHeight + 8) * 2.5
+            )
+            : Math.max(
+              baseColumnLabelWidth,
+              matrixInfoHeight + 6
+            );
+
+        col =
+          fixedTopClearance +
+          metadataStackHeight +
+          clusterStackHeight;
         /*
           So col labels and row labels are in commmon unit. I have each layer of size 8pixel and 1 extra layer is clustering layer
           So From deckgl docs 1common Unit = 2**Zoom*Pixel
          */
-    
+
         row =
           Math.max(
             ...dataState.rowLabels.map((l) =>
@@ -167,8 +200,8 @@ export const useLabelState = (
                 rowFont
               )
             )
-          ) 
-          // - (labels?.row?.offset || DEFAULT_LABEL_OFFSET);
+          )
+        // - (labels?.row?.offset || DEFAULT_LABEL_OFFSET);
       }
     }
     setLabelsState({
@@ -183,6 +216,8 @@ export const useLabelState = (
     labels?.column,
     labels?.row,
     order.colCat.length,
+    order.col,
+    matrixInfoHeight,
     ID,
     datastateVersion,
     // heatmapstateVersion,

@@ -308,6 +308,44 @@ export const validateWorkflowActionAgainstDataset = (
         }
     }
 
+    if (action.type === 'set_opacity') {
+        const value = action.parameters.value;
+
+        if (
+            typeof value !== 'number' ||
+            !Number.isFinite(value) ||
+            value < 0.5 ||
+            value > 3
+        ) {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'INVALID_PARAMETER',
+                        message:
+                            'Opacity must be a number between 0.5 and 3.',
+                        parameter: 'value'
+                    }
+                ]
+            };
+        }
+
+        if (action.target !== 'matrix') {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'INVALID_PARAMETER',
+                        message:
+                            'Opacity applies to the matrix visualization.',
+                        parameter: 'target',
+                        availableValues: ['matrix']
+                    }
+                ]
+            };
+        }
+    }
+
     if (action.type === 'sort_by_metadata') {
         const field = action.parameters.field;
 
@@ -1335,6 +1373,114 @@ export const validateWorkflowActionAgainstDataset = (
         }
     }
 
+    if (action.type === 'set_cluster_depth') {
+        const value = action.parameters.value;
+
+        if (
+            typeof value !== 'number' ||
+            !Number.isInteger(value) ||
+            value < 1 ||
+            value > 11
+        ) {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'INVALID_PARAMETER',
+                        message:
+                            'Cluster depth must be an integer between 1 and 11.',
+                        parameter: 'value'
+                    }
+                ]
+            };
+        }
+
+        if (
+            action.target !== 'rows' &&
+            action.target !== 'columns'
+        ) {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'INVALID_PARAMETER',
+                        message:
+                            'Cluster depth must target either rows or columns.',
+                        parameter: 'target',
+                        availableValues: ['rows', 'columns']
+                    }
+                ]
+            };
+        }
+    }
+
+    if (action.type === 'set_metadata_categories') {
+        const categories = action.parameters.categories;
+
+        if (
+            action.target !== 'rows' &&
+            action.target !== 'columns'
+        ) {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'INVALID_PARAMETER',
+                        message:
+                            'Metadata categories must target either rows or columns.',
+                        parameter: 'target',
+                        availableValues: ['rows', 'columns']
+                    }
+                ]
+            };
+        }
+
+        if (
+            !Array.isArray(categories) ||
+            !categories.every(
+                category => typeof category === 'string'
+            )
+        ) {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'INVALID_PARAMETER',
+                        message:
+                            'Metadata categories must be an array of field names.',
+                        parameter: 'categories'
+                    }
+                ]
+            };
+        }
+
+        const availableFields =
+            action.target === 'rows'
+                ? context.rowMetadataFields
+                : context.columnMetadataFields;
+
+        const missingCategory =
+            categories.find(
+                category =>
+                    !availableFields.includes(category)
+            );
+
+        if (missingCategory) {
+            return {
+                status: 'needs_resolution',
+                issues: [
+                    {
+                        code: 'MISSING_METADATA_FIELD',
+                        message:
+                            `Metadata field "${missingCategory}" is not available for ${action.target} in the current dataset.`,
+                        parameter: 'categories',
+                        availableValues: availableFields
+                    }
+                ]
+            };
+        }
+    }
+
     switch (action.type) {
         case 'filter':
         case 'inverse_filter':
@@ -1353,6 +1499,9 @@ export const validateWorkflowActionAgainstDataset = (
         case 'transpose':
         case 'crop':
         case 'clear_crop':
+        case 'set_opacity':
+        case 'set_cluster_depth':
+        case 'set_metadata_categories':
             return {
                 status: 'ready',
                 issues: []

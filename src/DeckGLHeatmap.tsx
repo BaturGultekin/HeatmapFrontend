@@ -193,6 +193,33 @@ export const DeckGLHeatmap = ({
   const [OpacityValue, setOpacityValue] = useState(OPACITY);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [matrixOrientation, setMatrixOrientation] = useState('Original');
+  const matrixInfoRef = useRef<HTMLDivElement | null>(null);
+  const [matrixInfoHeight, setMatrixInfoHeight] = useState(0);
+
+  React.useLayoutEffect(() => {
+    const element = matrixInfoRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const updateMatrixInfoHeight = () => {
+      setMatrixInfoHeight(
+        Math.ceil(element.getBoundingClientRect().height)
+      );
+    };
+
+    updateMatrixInfoHeight();
+
+    const resizeObserver =
+      new ResizeObserver(updateMatrixInfoHeight);
+
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const [zScoreAxis, setZScoreAxis] =
     useState<ZScoreAxis>('row');
@@ -507,11 +534,94 @@ export const DeckGLHeatmap = ({
     };
   };
 
+  const handleOpacityInteractionEnd = (
+    value: number
+  ) => {
+    recordWorkflowAction({
+      type: 'set_opacity',
+      source: 'gui',
+      label: `Set Opacity to ${value}`,
+      target: 'matrix',
+      parameters: {
+        value
+      }
+    });
+  };
+
+  const handleRowClusterDepthInteractionEnd = (
+    value: number
+  ) => {
+    const canonicalTarget: WorkflowTarget =
+      matrixOrientation === 'Transposed'
+        ? 'columns'
+        : 'rows';
+
+    recordWorkflowAction({
+      type: 'set_cluster_depth',
+      source: 'gui',
+      label: `Set Row Cluster Depth to ${value}`,
+      target: canonicalTarget,
+      parameters: {
+        value
+      }
+    });
+  };
+
+  const handleColumnClusterDepthInteractionEnd = (
+    value: number
+  ) => {
+    const canonicalTarget: WorkflowTarget =
+      matrixOrientation === 'Transposed'
+        ? 'rows'
+        : 'columns';
+
+    recordWorkflowAction({
+      type: 'set_cluster_depth',
+      source: 'gui',
+      label: `Set Column Cluster Depth to ${value}`,
+      target: canonicalTarget,
+      parameters: {
+        value
+      }
+    });
+  };
+
+  const handleMetadataSelectionChange = (
+    axis: 'row' | 'col',
+    categories: string[]
+  ) => {
+    const target: WorkflowTarget =
+      axis === 'row'
+        ? 'rows'
+        : 'columns';
+
+    const axisLabel =
+      axis === 'row'
+        ? 'Row'
+        : 'Column';
+
+    recordWorkflowAction({
+      type: 'set_metadata_categories',
+      source: 'gui',
+      label:
+        categories.length > 0
+          ? `Set ${axisLabel} Metadata Categories: ${categories.join(', ')}`
+          : `Clear ${axisLabel} Metadata Categories`,
+      target,
+      parameters: {
+        categories: [...categories]
+      }
+    });
+  };
+
   const resetAnalysisForImportedWorkflow = () => {
     setMatrixOrientation('Original');
 
     setZScoreAxis('row');
     setReZscoreFilteredSubset(false);
+    setOpacityValue(OPACITY);
+    setRowClusterValue(5);
+    setColClusterValue(5);
 
     const baselineRowCategories =
       data?.cat_colors?.row
@@ -1648,6 +1758,70 @@ export const DeckGLHeatmap = ({
         sortByColCat: '',
         sortColsByRowName: feature
       }));
+
+      return true;
+    }
+
+    if (action.type === 'set_metadata_categories') {
+      const categories =
+        action.parameters.categories as string[];
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setOrder(prev => {
+        if (action.target === 'rows') {
+          return {
+            ...prev,
+            rowCat: [...categories]
+          };
+        }
+
+        if (action.target === 'columns') {
+          return {
+            ...prev,
+            colCat: [...categories]
+          };
+        }
+
+        return prev;
+      });
+
+      return true;
+    }
+
+    if (action.type === 'set_opacity') {
+      const value =
+        action.parameters.value as number;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      setOpacityValue(value);
+
+      return true;
+    }
+
+    if (action.type === 'set_cluster_depth') {
+      const value =
+        action.parameters.value as number;
+
+      console.log(
+        '▶️ REPLAYING IMPORTED ACTION',
+        action
+      );
+
+      if (action.target === 'rows') {
+        setRowClusterValue(value);
+      } else if (action.target === 'columns') {
+        setColClusterValue(value);
+      } else {
+        return false;
+      }
 
       return true;
     }
@@ -4054,6 +4228,7 @@ export const DeckGLHeatmap = ({
     ID,
     datastateVersion,
     heatmapstateVersion,
+    matrixInfoHeight,
     setLabelsState
   );
 
@@ -5159,6 +5334,16 @@ export const DeckGLHeatmap = ({
           opacityValue={OpacityValue}
           pvalThreshold={pvalThreshold}
           onSliderInteractionStart={saveUndoPoint}
+          onOpacityInteractionEnd={handleOpacityInteractionEnd}
+          onRowClusterDepthInteractionEnd={
+            handleRowClusterDepthInteractionEnd
+          }
+          onColumnClusterDepthInteractionEnd={
+            handleColumnClusterDepthInteractionEnd
+          }
+          onMetadataSelectionChange={
+            handleMetadataSelectionChange
+          }
           reZscoreFilteredSubset={reZscoreFilteredSubset}
           zScoreAxis={displayedZScoreAxis}
           onReZscoreToggle={handleReZscoreToggle}
@@ -5217,8 +5402,9 @@ export const DeckGLHeatmap = ({
             onMouseDown={handleMouseDown}
           >
 
-            {/* Matrix information - v1.2.0 */}
+            {/* Matrix information */}
             <div
+              ref={matrixInfoRef}
               style={{
                 position: 'absolute',
                 top: '4px',
