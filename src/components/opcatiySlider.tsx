@@ -18,6 +18,7 @@ type CustomSliderProps = {
   initialVal: number;
   calculateSteps?: boolean;
   onInteractionStart?: () => void;
+  onInteractionEnd?: (value: number) => void;
 };
 
 export default function MultipurposeSlider({
@@ -30,6 +31,7 @@ export default function MultipurposeSlider({
   initialVal,
   calculateSteps = false,
   onInteractionStart,
+  onInteractionEnd,
 }: CustomSliderProps) {
 
   const interactionStartedRef = React.useRef(false);
@@ -46,8 +48,12 @@ export default function MultipurposeSlider({
     setOpacityValue(newValue as number);
   };
 
-  const handleSliderCommitted = () => {
+  const handleSliderCommitted = (
+    _: React.SyntheticEvent | Event,
+    newValue: number | number[]
+  ) => {
     interactionStartedRef.current = false;
+    onInteractionEnd?.(newValue as number);
   };
 
   let steps: any = [];

@@ -8,7 +8,11 @@ type MultiSelectProps = {
   elements: string[];
   order: order;
   setOrder: React.Dispatch<React.SetStateAction<any>>;
-  axis: string;
+  axis: 'row' | 'col';
+  onSelectionChange?: (
+    axis: 'row' | 'col',
+    categories: string[]
+  ) => void;
 };
 
 const CONTROL_COLORS = {
@@ -20,7 +24,7 @@ const CONTROL_COLORS = {
   background: '#FFFFFF',
 };
 
-const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, axis }) => {
+const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, axis, onSelectionChange }) => {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -142,6 +146,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ elements, order, setOrder, ax
         } else {
           setOrder((prev: any) => ({ ...prev, rowCat: value }));
         }
+        onSelectionChange?.(axis, value);
       }}
       // Custom chip rendering to ensure full text display
       renderTags={(value, getTagProps) =>

@@ -148,6 +148,9 @@ export interface DeckGLHeatmapProps {
   /* Optional content rendered at the top of the left sidebar */
   sidebarTopContent?: React.ReactNode;
 
+  /* True for the homepage/default heatmap, false for uploaded-data workspaces */
+  homepage: boolean;
+
   /*P vlaue json for results files */
   pvalData?: Record<string, Record<string, number>>;
 

@@ -247,34 +247,34 @@ function sortData(
 }
 
 
-  // Modified sortByCat to work with regular objects instead of Maps
-  function sortByCat(
-    data: Record<string, Record<string, number>>,
-    order: {
-      row: string;
-      col: string;
-      rowCat: string[];
-      sortByRowCat: string;
-      colCat: string[];
-      sortByColCat: string;
-    },
-    jsonData: any,
-    categories: {row: { [key: string]: string }, col: { [key: string]: string }}
-  ): Record<string, Record<string, number>> {
-  
+// Modified sortByCat to work with regular objects instead of Maps
+function sortByCat(
+  data: Record<string, Record<string, number>>,
+  order: {
+    row: string;
+    col: string;
+    rowCat: string[];
+    sortByRowCat: string;
+    colCat: string[];
+    sortByColCat: string;
+  },
+  jsonData: any,
+  categories: { row: { [key: string]: string }, col: { [key: string]: string } }
+): Record<string, Record<string, number>> {
+
   let sortedDataCat: Record<string, Record<string, number>> = {};
   const rows = Object.keys(data);
 
-  if(jsonData.row_nodes && jsonData.col_nodes && jsonData.mat) {
-    if(order.sortByColCat.trim().length > 0) {
+  if (jsonData.row_nodes && jsonData.col_nodes && jsonData.mat) {
+    if (order.sortByColCat.trim().length > 0) {
       const indexName = categories.col[order.sortByColCat];
       let indexStringArray = indexName.split("-");
       indexStringArray.push('index');
       let idxString = indexStringArray.join("_");
-      
-      const colNodes: [string, number][] = jsonData.col_nodes.map((d:any) => [d.name, d[idxString]]);
+
+      const colNodes: [string, number][] = jsonData.col_nodes.map((d: any) => [d.name, d[idxString]]);
       const sortedCols = colNodes.sort((a, b) => a[1] - b[1]);
-      
+
       rows.forEach((rowLabel) => {
         sortedDataCat[rowLabel] = {};
         sortedCols.forEach((colLabel) => {
@@ -282,43 +282,43 @@ function sortData(
         });
       });
     }
-    
-    if(order.sortByRowCat.trim().length > 0) {
+
+    if (order.sortByRowCat.trim().length > 0) {
       const indexName = categories.row[order.sortByRowCat];
       let indexStringArray = indexName.split("-");
       indexStringArray.push('index');
       let idxString = indexStringArray.join("_");
 
-      const rowNodes: [string, number][] = jsonData.row_nodes.map((d:any) => [d.name, d[idxString]]);
+      const rowNodes: [string, number][] = jsonData.row_nodes.map((d: any) => [d.name, d[idxString]]);
       const sortedRows = rowNodes.sort((a, b) => a[1] - b[1]);
 
-      if(Object.keys(sortedDataCat).length > 0) {
+      if (Object.keys(sortedDataCat).length > 0) {
         let sortedDataCombined: Record<string, Record<string, number>> = {};
         const columns = Object.keys(sortedDataCat[rows[0]]);
-        
+
         sortedRows.forEach((row) => {
           sortedDataCombined[row[0]] = {};
           columns.forEach((col) => {
             sortedDataCombined[row[0]][col] = sortedDataCat[row[0]][col];
           });
         });
-        
+
         return sortedDataCombined;
       } else {
         const columns = Object.keys(data[rows[0]]);
         let newSortedData: Record<string, Record<string, number>> = {};
-        
+
         sortedRows.forEach((row) => {
           newSortedData[row[0]] = {};
           columns.forEach((col) => {
             newSortedData[row[0]][col] = data[row[0]][col];
           });
         });
-        
+
         return newSortedData;
       }
     }
-    
+
     return Object.keys(sortedDataCat).length > 0 ? sortedDataCat : data;
   } else {
     return data;
@@ -396,17 +396,32 @@ export function computeDataState(
   const numRows = rowIndices.length;
   const numColumns = colIndices.length;
 
-// Apply sorting to indices instead of creating nested objects
-const needsCategorySorting = order.sortByRowCat.trim().length > 0 ||
-                              order.sortByColCat.trim().length > 0 ||
-                              (order.sortColsByRowName !== null && order.sortColsByRowName !== undefined && order.sortColsByRowName.trim().length > 0);
+  // Apply sorting to indices instead of creating nested objects
+  const needsCategorySorting = order.sortByRowCat.trim().length > 0 ||
+    order.sortByColCat.trim().length > 0 ||
+    (order.sortColsByRowName !== null && order.sortColsByRowName !== undefined && order.sortColsByRowName.trim().length > 0);
 
-if (needsCategorySorting) {
-  applyCategorySorting(rowIndices, colIndices, order, jsonData, categories);
-} else {
-  // Apply regular sorting to indices
-  applyRegularSorting(rowIndices, colIndices, order, jsonData, rowNodeMap, colNodeMap);
-}
+  // Preserve the current independent row/column ordering first.
+  applyRegularSorting(
+    rowIndices,
+    colIndices,
+    order,
+    jsonData,
+    rowNodeMap,
+    colNodeMap
+  );
+
+  // Metadata/expression sorting then overrides only
+  // the axis explicitly requested.
+  if (needsCategorySorting) {
+    applyCategorySorting(
+      rowIndices,
+      colIndices,
+      order,
+      jsonData,
+      categories
+    );
+  }
 
   // Extract rows and columns, and compute dimensions
   // const rows = Object.keys(transformedData);
@@ -425,9 +440,9 @@ if (needsCategorySorting) {
   //     const rawVal = transformedData[row][col];
   //     // If rawVal is null, it becomes NaN. Otherwise, it's a number.
   //     const val = rawVal === null ? NaN : parseFloat(rawVal.toFixed(2));
-  
+
   //     values[rowIndex * numColumns + colIndex] = val;
-  
+
   //     // Only update min/max if the value is a valid number
   //     if (!isNaN(val)) {
   //       if (val < min) min = val;
@@ -437,26 +452,26 @@ if (needsCategorySorting) {
   // });
 
   // Build Float32Array directly from sorted indices - NO INTERMEDIATE OBJECT!
-let index = 0;
-for (let r = 0; r < numRows; r++) {
-  for (let c = 0; c < numColumns; c++) {
-    const rowIdx = rowIndices[r];
-    const colIdx = colIndices[c];
-    const rawVal = jsonData.mat[rowIdx][colIdx];
-    
-    // If rawVal is null, it becomes NaN. Otherwise, it's a number.
-    const val = rawVal === null ? NaN : parseFloat(rawVal.toFixed(2));
+  let index = 0;
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < numColumns; c++) {
+      const rowIdx = rowIndices[r];
+      const colIdx = colIndices[c];
+      const rawVal = jsonData.mat[rowIdx][colIdx];
 
-    values[index] = val;
-    index++;
+      // If rawVal is null, it becomes NaN. Otherwise, it's a number.
+      const val = rawVal === null ? NaN : parseFloat(rawVal.toFixed(2));
 
-    // Only update min/max if the value is a valid number
-    if (!isNaN(val)) {
-      if (val < min) min = val;
-      if (val > max) max = val;
+      values[index] = val;
+      index++;
+
+      // Only update min/max if the value is a valid number
+      if (!isNaN(val)) {
+        if (val < min) min = val;
+        if (val > max) max = val;
+      }
     }
   }
-}
 
   // Retrieve category arrays for row and column labels
   const colCategory = order.colCat || [];
@@ -469,9 +484,9 @@ for (let r = 0; r < numRows; r++) {
   // const colLabels = columns.map((v, i) => {
   //   const colNode = jsonData.col_nodes.find((d: any) => d.name === v);
   // Build the column labels array using sorted indices
-const colLabels = colIndices.map((colIdx, i) => {
-  const colNode = jsonData.col_nodes[colIdx];
-  const v = cleanLabelName(colNode.name);
+  const colLabels = colIndices.map((colIdx, i) => {
+    const colNode = jsonData.col_nodes[colIdx];
+    const v = cleanLabelName(colNode.name);
     return {
       text: v,
       position: i,
@@ -492,9 +507,9 @@ const colLabels = colIndices.map((colIdx, i) => {
   // const rowLabels = rows.map((v, i) => {
   //   const rowNode = jsonData.row_nodes.find((d: any) => d.name === v);
   // Build the row labels array using sorted indices
-const rowLabels = rowIndices.map((rowIdx, i) => {
-  const rowNode = jsonData.row_nodes[rowIdx];
-  const v = cleanLabelName(rowNode.name);
+  const rowLabels = rowIndices.map((rowIdx, i) => {
+    const rowNode = jsonData.row_nodes[rowIdx];
+    const v = cleanLabelName(rowNode.name);
     return {
       text: v,
       position: i,

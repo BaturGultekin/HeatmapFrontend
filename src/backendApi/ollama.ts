@@ -36,6 +36,10 @@ export interface HeatmapResponse {
     target?: string;
     value?: string;
     updated_filters?: any;
+    resolved_filters?: Array<{
+        target: string;
+        value: string;
+    }>;
     clustering_result?: any;
     pathway_results?: PathwayResult[];
     distance?: string;  // For set_clustering action

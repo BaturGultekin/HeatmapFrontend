@@ -21,6 +21,10 @@ interface Filter {
   field?: string;
   value?: any;
   top_n?: number;
+  criteria?: Array<{
+    field: string;
+    value: any;
+  }>;
 }
 
 interface FiltersState {
@@ -32,8 +36,21 @@ interface FiltersSectionProps {
   filters: FiltersState;
   setFilters: React.Dispatch<React.SetStateAction<FiltersState>>;
   onRenderHeatmap: (currentFilters: FiltersState) => void;
+  onGuiClearFiltersRequest?: () => void;
+  onGuiRemoveFiltersRequest?: (
+    removedFilters: Array<{
+      axis: 'row' | 'col';
+      type: string;
+      field?: string;
+      value?: any;
+      top_n?: number;
+      criteria?: Array<{
+        field: string;
+        value: any;
+      }>;
+    }>
+  ) => void;
 }
-
 
 const CONTROL_COLORS = {
   text: '#777777',
@@ -48,7 +65,9 @@ const CONTROL_COLORS = {
 const FiltersSection: React.FC<FiltersSectionProps> = ({
   filters,
   setFilters,
-  onRenderHeatmap
+  onRenderHeatmap,
+  onGuiClearFiltersRequest,
+  onGuiRemoveFiltersRequest
 }) => {
 
   const [pendingFilters, setPendingFilters] =
@@ -126,9 +145,53 @@ const FiltersSection: React.FC<FiltersSectionProps> = ({
     });
   };
 
+  const getRemovedFilters = (axis: 'row' | 'col') => {
+    const unmatchedPending = [...pendingFilters[axis]];
+
+    const removedFilters: Array<
+      Filter & { axis: 'row' | 'col' }
+    > = [];
+
+    filters[axis].forEach(filter => {
+      const matchIndex = unmatchedPending.findIndex(
+        candidate =>
+          JSON.stringify(candidate) === JSON.stringify(filter)
+      );
+
+      if (matchIndex >= 0) {
+        unmatchedPending.splice(matchIndex, 1);
+      } else {
+        removedFilters.push({
+          axis,
+          ...filter
+        });
+      }
+    });
+
+    return removedFilters;
+  };
 
   // Apply changes
   const applyChanges = () => {
+    const hadActiveFilters =
+      filters.row.length > 0 ||
+      filters.col.length > 0;
+
+    const isClearingAll =
+      pendingFilters.row.length === 0 &&
+      pendingFilters.col.length === 0;
+
+    const removedFilters = [
+      ...getRemovedFilters('row'),
+      ...getRemovedFilters('col')
+    ];
+
+    if (hadActiveFilters && isClearingAll) {
+      onGuiClearFiltersRequest?.();
+    } else if (removedFilters.length > 0) {
+      onGuiRemoveFiltersRequest?.(removedFilters);
+    }
+
     setFilters(pendingFilters);
     onRenderHeatmap(pendingFilters);
     setHasChanges(false);
